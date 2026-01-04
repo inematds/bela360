@@ -1,0 +1,198 @@
+version: '3.8'
+
+services:
+  # ===========================================
+  # PostgreSQL Database
+  # ===========================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: bela360-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bela360}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bela360_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-bela360}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bela360} -d ${POSTGRES_DB:-bela360}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bela360-network
+
+  # ===========================================
+  # Redis (Cache & Queue)
+  # ===========================================
+  redis:
+    image: redis:7-alpine
+    container_name: bela360-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bela360-network
+
+  # ===========================================
+  # Evolution API (WhatsApp)
+  # ===========================================
+  evolution-api:
+    image: atendai/evolution-api:latest
+    container_name: bela360-evolution
+    restart: unless-stopped
+    environment:
+      - SERVER_URL=http://localhost:8080
+      - AUTHENTICATION_TYPE=apikey
+      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY:-bela360_evolution_key}
+      - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
+      - DATABASE_ENABLED=true
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://${POSTGRES_USER:-bela360}:${POSTGRES_PASSWORD:-bela360_secret}@postgres:5432/${POSTGRES_DB:-bela360}?schema=evolution
+      - DATABASE_CONNECTION_CLIENT_NAME=evolution
+      - RABBITMQ_ENABLED=false
+      - WEBSOCKET_ENABLED=true
+      - LOG_LEVEL=WARN
+      - DEL_INSTANCE=false
+      - CONFIG_SESSION_PHONE_CLIENT=bela360
+      - CONFIG_SESSION_PHONE_NAME=Chrome
+      - QRCODE_LIMIT=10
+      - WEBHOOK_GLOBAL_URL=http://api:3001/api/webhooks/whatsapp
+      - WEBHOOK_GLOBAL_ENABLED=true
+      - WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS=true
+    ports:
+      - "8080:8080"
+    volumes:
+      - evolution_instances:/evolution/instances
+      - evolution_store:/evolution/store
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bela360-network
+
+  # ===========================================
+  # Backend API (Node.js/Express)
+  # ===========================================
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+      target: development
+    container_name: bela360-api
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-bela360}:${POSTGRES_PASSWORD:-bela360_secret}@postgres:5432/${POSTGRES_DB:-bela360}?schema=public
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-super_secret_jwt_key_change_in_production}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-super_secret_refresh_key_change_in_production}
+      - EVOLUTION_API_URL=http://evolution-api:8080
+      - EVOLUTION_API_KEY=${EVOLUTION_API_KEY:-bela360_evolution_key}
+      - EVOLUTION_INSTANCE_NAME=${EVOLUTION_INSTANCE_NAME:-bela360}
+      - FRONTEND_URL=http://localhost:3000
+    volumes:
+      - ./apps/api:/app/apps/api
+      - ./packages:/app/packages
+      - /app/node_modules
+      - /app/apps/api/node_modules
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - bela360-network
+    command: pnpm --filter api dev
+
+  # ===========================================
+  # Frontend Web (Next.js)
+  # ===========================================
+  web:
+    build:
+      context: .
+      dockerfile: docker/web/Dockerfile
+      target: development
+    container_name: bela360-web
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
+      - NEXT_PUBLIC_WS_URL=ws://localhost:3001
+    volumes:
+      - ./apps/web:/app/apps/web
+      - ./packages:/app/packages
+      - /app/node_modules
+      - /app/apps/web/node_modules
+      - /app/apps/web/.next
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    networks:
+      - bela360-network
+    command: pnpm --filter web dev
+
+  # ===========================================
+  # Bull Board (Queue Dashboard)
+  # ===========================================
+  bull-board:
+    image: deadly0/bull-board:latest
+    container_name: bela360-bull-board
+    restart: unless-stopped
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - BULL_PREFIX=bull
+    ports:
+      - "3002:3000"
+    depends_on:
+      - redis
+    networks:
+      - bela360-network
+
+  # ===========================================
+  # Adminer (Database UI) - Dev only
+  # ===========================================
+  adminer:
+    image: adminer:latest
+    container_name: bela360-adminer
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    depends_on:
+      - postgres
+    networks:
+      - bela360-network
+    profiles:
+      - dev-tools
+
+# ===========================================
+# Networks
+# ===========================================
+networks:
+  bela360-network:
+    driver: bridge
+
+# ===========================================
+# Volumes
+# ===========================================
+volumes:
+  postgres_data:
+  redis_data:
+  evolution_instances:
+  evolution_store:

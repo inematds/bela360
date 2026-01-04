@@ -1,0 +1,384 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum BusinessType {
+  SALON
+  BARBERSHOP
+  AESTHETICS
+  SPA
+  OTHER
+}
+
+enum BusinessStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  CANCELLED
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  PROFESSIONAL
+  RECEPTIONIST
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+// ============================================
+// CORE MODELS
+// ============================================
+
+model Business {
+  id          String         @id @default(cuid())
+  name        String
+  slug        String         @unique
+  phone       String         @unique
+  email       String?
+  type        BusinessType   @default(SALON)
+  status      BusinessStatus @default(PENDING)
+
+  // Address
+  address     String?
+  city        String?
+  state       String?
+  zipCode     String?
+
+  // WhatsApp Integration
+  whatsappInstanceId   String?   @unique
+  whatsappConnected    Boolean   @default(false)
+  whatsappConnectedAt  DateTime?
+
+  // Settings (JSON)
+  settings    Json           @default("{}")
+
+  // Timestamps
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  // Relations
+  users           User[]
+  services        Service[]
+  clients         Client[]
+  appointments    Appointment[]
+  workingHours    WorkingHours[]
+  messages        Message[]
+  messageTemplates MessageTemplate[]
+
+  @@index([phone])
+  @@index([status])
+  @@map("businesses")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  businessId   String
+  name         String
+  phone        String
+  email        String?
+  role         UserRole  @default(PROFESSIONAL)
+  isActive     Boolean   @default(true)
+
+  // Authentication
+  otpCode      String?
+  otpExpiresAt DateTime?
+  lastLoginAt  DateTime?
+
+  // Professional specific
+  color        String?   // Calendar color
+  commission   Decimal?  @db.Decimal(5, 2) // Commission percentage
+
+  // Timestamps
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  business     Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  appointments Appointment[] @relation("ProfessionalAppointments")
+  services     ServiceProfessional[]
+  workingHours WorkingHours[]
+
+  @@unique([businessId, phone])
+  @@index([businessId])
+  @@index([phone])
+  @@map("users")
+}
+
+model Service {
+  id           String    @id @default(cuid())
+  businessId   String
+  name         String
+  description  String?
+  duration     Int       // Duration in minutes
+  price        Decimal   @db.Decimal(10, 2)
+  isActive     Boolean   @default(true)
+
+  // Timestamps
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  business     Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  professionals ServiceProfessional[]
+  appointments Appointment[]
+
+  @@index([businessId])
+  @@index([businessId, isActive])
+  @@map("services")
+}
+
+model ServiceProfessional {
+  id            String   @id @default(cuid())
+  serviceId     String
+  professionalId String
+  customDuration Int?    // Override service duration
+  customPrice    Decimal? @db.Decimal(10, 2) // Override service price
+
+  // Relations
+  service      Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  professional User     @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@unique([serviceId, professionalId])
+  @@map("service_professionals")
+}
+
+model Client {
+  id           String    @id @default(cuid())
+  businessId   String
+  name         String
+  phone        String
+  email        String?
+  birthDate    DateTime?
+  notes        String?
+
+  // Preferences
+  preferredProfessionalId String?
+
+  // Stats (denormalized for performance)
+  totalAppointments Int      @default(0)
+  totalSpent        Decimal  @default(0) @db.Decimal(10, 2)
+  lastVisitAt       DateTime?
+
+  // Timestamps
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  business     Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+  messages     Message[]
+
+  @@unique([businessId, phone])
+  @@index([businessId])
+  @@index([phone])
+  @@index([businessId, lastVisitAt])
+  @@map("clients")
+}
+
+model Appointment {
+  id             String            @id @default(cuid())
+  businessId     String
+  clientId       String
+  professionalId String
+  serviceId      String
+
+  // Scheduling
+  startTime      DateTime
+  endTime        DateTime
+  status         AppointmentStatus @default(PENDING)
+
+  // Notes
+  notes          String?
+  cancellationReason String?
+
+  // Reminders
+  reminderSentAt DateTime?
+  confirmedAt    DateTime?
+
+  // Timestamps
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  // Relations
+  business       Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  client         Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  professional   User              @relation("ProfessionalAppointments", fields: [professionalId], references: [id], onDelete: Cascade)
+  service        Service           @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([businessId, startTime])
+  @@index([professionalId, startTime])
+  @@index([clientId])
+  @@index([status])
+  @@map("appointments")
+}
+
+model WorkingHours {
+  id             String    @id @default(cuid())
+  businessId     String
+  professionalId String?   // null = business-wide hours
+  dayOfWeek      DayOfWeek
+
+  // Time slots (stored as HH:MM)
+  startTime      String    // e.g., "09:00"
+  endTime        String    // e.g., "18:00"
+
+  // Break time
+  breakStart     String?   // e.g., "12:00"
+  breakEnd       String?   // e.g., "13:00"
+
+  isActive       Boolean   @default(true)
+
+  // Relations
+  business       Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  professional   User?     @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, professionalId, dayOfWeek])
+  @@index([businessId])
+  @@index([professionalId])
+  @@map("working_hours")
+}
+
+// ============================================
+// MESSAGING MODELS
+// ============================================
+
+model Message {
+  id           String           @id @default(cuid())
+  businessId   String
+  clientId     String?
+
+  // WhatsApp specific
+  whatsappMessageId String?     @unique
+  remoteJid    String           // WhatsApp JID
+
+  // Content
+  direction    MessageDirection
+  content      String
+  mediaUrl     String?
+  mediaType    String?
+
+  // Status
+  status       MessageStatus    @default(PENDING)
+  sentAt       DateTime?
+  deliveredAt  DateTime?
+  readAt       DateTime?
+  failedReason String?
+
+  // Context
+  isFromBot    Boolean          @default(false)
+  intent       String?          // Detected intent (scheduling, info, etc.)
+
+  // Timestamps
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  // Relations
+  business     Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  client       Client?          @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@index([businessId])
+  @@index([businessId, createdAt])
+  @@index([clientId])
+  @@index([remoteJid])
+  @@map("messages")
+}
+
+model MessageTemplate {
+  id           String    @id @default(cuid())
+  businessId   String
+  name         String
+  type         String    // confirmation, reminder, welcome, etc.
+  content      String    // Template with variables like {{client_name}}
+  isActive     Boolean   @default(true)
+
+  // Timestamps
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  business     Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, type])
+  @@index([businessId])
+  @@map("message_templates")
+}
+
+// ============================================
+// ANALYTICS MODELS
+// ============================================
+
+model DailyStats {
+  id                 String   @id @default(cuid())
+  businessId         String
+  date               DateTime @db.Date
+
+  // Appointment stats
+  totalAppointments  Int      @default(0)
+  confirmedCount     Int      @default(0)
+  cancelledCount     Int      @default(0)
+  noShowCount        Int      @default(0)
+  completedCount     Int      @default(0)
+
+  // Revenue
+  totalRevenue       Decimal  @default(0) @db.Decimal(10, 2)
+
+  // Client stats
+  newClients         Int      @default(0)
+  returningClients   Int      @default(0)
+
+  // Message stats
+  messagesSent       Int      @default(0)
+  messagesReceived   Int      @default(0)
+
+  // Timestamps
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([businessId, date])
+  @@index([businessId])
+  @@index([businessId, date])
+  @@map("daily_stats")
+}

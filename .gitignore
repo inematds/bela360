@@ -1,0 +1,70 @@
+# ===========================================
+# bela360 - Git Ignore
+# ===========================================
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Prisma
+apps/api/prisma/*.db
+apps/api/prisma/*.db-journal
+
+# Temporary files
+tmp/
+temp/
+.cache/
+.turbo/
+
+# Misc
+*.tsbuildinfo
+.eslintcache
+
+# Docker volumes (if stored locally)
+docker/postgres/data/
+docker/redis/data/
+
+# SSL certificates (sensitive)
+docker/nginx/ssl/*.pem
+docker/nginx/ssl/*.key
+docker/nginx/ssl/*.crt
+
+# Generated files
+*.generated.*
+
+# Debug
+.ai/

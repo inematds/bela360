@@ -1,0 +1,60 @@
+# ===========================================
+# bela360 - Docker Ignore
+# ===========================================
+
+# Dependencies
+node_modules
+**/node_modules
+
+# Build outputs
+.next
+**/dist
+**/.next
+**/out
+**/build
+
+# Environment files (use docker-compose env)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Testing
+coverage
+.nyc_output
+
+# Docker
+docker-compose*.yml
+Dockerfile*
+
+# Documentation (not needed in container)
+docs
+*.md
+!README.md
+
+# Misc
+.turbo
+.eslintcache
+.cache
+tmp
+temp
