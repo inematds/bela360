@@ -64,8 +64,9 @@ COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_module
 # Copy source code
 COPY . .
 
-# Generate Prisma client and build
+# Generate Prisma client and build shared + api
 RUN cd apps/api && pnpm prisma generate
+RUN pnpm --filter @bela360/shared build
 RUN pnpm --filter api build
 
 # ===========================================
