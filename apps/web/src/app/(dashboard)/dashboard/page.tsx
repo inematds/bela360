@@ -139,7 +139,7 @@ export default function DashboardPage() {
         </div>
         <div className="border-t px-6 py-4">
           <a
-            href="/dashboard/agenda"
+            href="/agenda"
             className="text-sm font-medium text-primary hover:underline"
           >
             Ver todos os agendamentos →

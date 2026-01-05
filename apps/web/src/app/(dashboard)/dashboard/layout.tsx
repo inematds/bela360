@@ -16,11 +16,11 @@ import { useState } from 'react';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
-  { name: 'Agenda', href: '/dashboard/agenda', icon: Calendar },
-  { name: 'Clientes', href: '/dashboard/clientes', icon: Users },
-  { name: 'Serviços', href: '/dashboard/servicos', icon: Scissors },
-  { name: 'Mensagens', href: '/dashboard/mensagens', icon: MessageSquare },
-  { name: 'Configurações', href: '/dashboard/configuracoes', icon: Settings },
+  { name: 'Agenda', href: '/agenda', icon: Calendar },
+  { name: 'Clientes', href: '/clientes', icon: Users },
+  { name: 'Serviços', href: '/servicos', icon: Scissors },
+  { name: 'WhatsApp', href: '/whatsapp', icon: MessageSquare },
+  { name: 'Configurações', href: '/configuracoes', icon: Settings },
 ];
 
 export default function DashboardLayout({
