@@ -24,29 +24,15 @@ O projeto bela360 e uma plataforma de automacao para negocios de beleza (saloes,
 
 ## Correcoes Aplicadas (Deploy)
 
-### 1. Dockerfile da API
-- Adicionado build do pacote `@bela360/shared` antes da API
-- Arquivo: `docker/api/Dockerfile:69`
-
-### 2. Pasta public do Web
-- Adicionado `.gitkeep` em `apps/web/public/` para garantir que a pasta exista no Docker build
-
-### 3. Nomes das Filas BullMQ
-- BullMQ nao permite `:` nos nomes das filas
-- Alterado de `whatsapp:messages` para `whatsapp-messages`
-- Alterado de `whatsapp:send` para `whatsapp-send`
-- Alterado de `whatsapp:reminders` para `whatsapp-reminders`
-- Arquivo: `apps/api/src/modules/whatsapp/whatsapp.queue.ts`
-
-### 4. Conexao Redis para BullMQ
-- BullMQ requer `maxRetriesPerRequest: null`
-- Criada conexao separada `bullmqConnection` para as filas
-- Arquivo: `apps/api/src/config/redis.ts`
-
-### 5. OpenSSL no Dockerfile da API
-- Prisma requer OpenSSL para conectar ao PostgreSQL no Alpine Linux
-- Adicionado `openssl openssl-dev` no Dockerfile
-- Arquivo: `docker/api/Dockerfile:8`
+| # | Problema | Solucao | Arquivo |
+|---|----------|---------|---------|
+| 1 | `@bela360/shared` not found | Build shared antes da API | `docker/api/Dockerfile` |
+| 2 | public folder not found | Adicionado `.gitkeep` | `apps/web/public/.gitkeep` |
+| 3 | Queue name cannot contain : | Nomes trocados para `-` | `whatsapp.queue.ts` |
+| 4 | maxRetriesPerRequest must be null | Conexao `bullmqConnection` separada | `config/redis.ts` |
+| 5 | Prisma failed to detect libssl | Adicionado `openssl` no Alpine | `docker/api/Dockerfile` |
+| 6 | /health retornando 404 | Nginx proxy para `/api/health` | `nginx.conf` |
+| 7 | Migracao nao encontrada | Criada migracao inicial | `prisma/migrations/` |
 
 ---
 
