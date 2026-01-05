@@ -76,7 +76,9 @@ services:
       - CACHE_REDIS_PREFIX_KEY=evolution
       - CACHE_LOCAL_ENABLED=false
       - WEBSOCKET_ENABLED=true
-      - LOG_LEVEL=DEBUG
+      - LOG_LEVEL=ERROR,WARN,DEBUG,INFO,LOG,VERBOSE,DARK,WEBHOOKS,WEBSOCKET
+      - LOG_BAILEYS=trace
+      - DEBUG=baileys:*
       - WEBHOOK_GLOBAL_URL=http://localhost:3001/api/webhooks/whatsapp
       - WEBHOOK_GLOBAL_ENABLED=true
     volumes:
