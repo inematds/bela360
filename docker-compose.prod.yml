@@ -59,7 +59,10 @@ services:
     image: atendai/evolution-api:v2.1.1
     container_name: bela360-evolution
     restart: always
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
     environment:
+      - NODE_OPTIONS=--dns-result-order=ipv4first
       - SERVER_URL=${EVOLUTION_PUBLIC_URL:-http://localhost:8080}
       - AUTHENTICATION_TYPE=apikey
       - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY}
