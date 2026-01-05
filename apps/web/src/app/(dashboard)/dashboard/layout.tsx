@@ -11,6 +11,8 @@ import {
   MessageSquare,
   Menu,
   X,
+  TrendingUp,
+  Bell,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -20,6 +22,8 @@ const navigation = [
   { name: 'Clientes', href: '/clientes', icon: Users },
   { name: 'Serviços', href: '/servicos', icon: Scissors },
   { name: 'WhatsApp', href: '/whatsapp', icon: MessageSquare },
+  { name: 'Analiticos', href: '/analiticos', icon: TrendingUp },
+  { name: 'Notificacoes', href: '/notificacoes', icon: Bell },
   { name: 'Configurações', href: '/configuracoes', icon: Settings },
 ];
 

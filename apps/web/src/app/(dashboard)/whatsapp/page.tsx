@@ -1,6 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { WhatsAppConfigModal } from '@/components/WhatsAppConfigModal';
+
+// TODO: Get from auth context
+const MOCK_BUSINESS_ID = 'demo-business-id';
 
 const mockConversations = [
   { id: '1', clientName: 'Maria Silva', lastMessage: 'Quero agendar um corte para amanha', time: '10:30', unread: 2, status: 'waiting' },
@@ -21,7 +25,8 @@ const mockMessages = [
 export default function WhatsAppPage() {
   const [selectedConversation, setSelectedConversation] = useState<string | null>('1');
   const [message, setMessage] = useState('');
-  const [isConnected, setIsConnected] = useState(true);
+  const [isConnected, setIsConnected] = useState(false);
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
 
   const selectedConv = mockConversations.find(c => c.id === selectedConversation);
 
@@ -39,7 +44,10 @@ export default function WhatsAppPage() {
             <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
             {isConnected ? 'Conectado' : 'Desconectado'}
           </div>
-          <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm">
+          <button
+            onClick={() => setIsConfigModalOpen(true)}
+            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
+          >
             Configurar
           </button>
         </div>
@@ -160,6 +168,13 @@ export default function WhatsAppPage() {
           </div>
         )}
       </div>
+
+      <WhatsAppConfigModal
+        isOpen={isConfigModalOpen}
+        onClose={() => setIsConfigModalOpen(false)}
+        businessId={MOCK_BUSINESS_ID}
+        onStatusChange={setIsConnected}
+      />
     </div>
   );
 }
