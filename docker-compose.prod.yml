@@ -77,8 +77,8 @@ services:
       - CACHE_LOCAL_ENABLED=false
       - WEBSOCKET_ENABLED=true
       - LOG_LEVEL=ERROR,WARN,DEBUG,INFO,LOG,VERBOSE,DARK,WEBHOOKS,WEBSOCKET
-      - LOG_BAILEYS=trace
-      - DEBUG=baileys:*
+      - LOG_BAILEYS=info
+      - CONFIG_SESSION_PHONE_VERSION=2.2413.51
       - WEBHOOK_GLOBAL_URL=http://localhost:3001/api/webhooks/whatsapp
       - WEBHOOK_GLOBAL_ENABLED=true
     volumes:
