@@ -60,7 +60,7 @@ services:
   # Evolution API
   # ===========================================
   evolution-api:
-    image: atendai/evolution-api:v2.3.7
+    image: evoapicloud/evolution-api:v2.3.7
     container_name: bela360-evolution
     restart: always
     network_mode: host
