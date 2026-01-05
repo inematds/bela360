@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../../config';
 
-const router = Router();
+const router: Router = Router();
 
 // Get loyalty program for business
 router.get('/program', async (req: Request, res: Response) => {
@@ -83,7 +83,7 @@ router.get('/clients/:clientId/points', async (req: Request, res: Response) => {
     if (!points) {
       points = await prisma.loyaltyPoints.create({
         data: { businessId, clientId },
-        include: { transactions: true, redemptions: true },
+        include: { transactions: true, redemptions: { include: { reward: true } } },
       });
     }
 
@@ -329,4 +329,4 @@ router.get('/stats', async (req: Request, res: Response) => {
   }
 });
 
-export const loyaltyRoutes = router;
+export const loyaltyRoutes: Router = router;

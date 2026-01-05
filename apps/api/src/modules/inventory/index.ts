@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../../config';
 
-const router = Router();
+const router: Router = Router();
 
 // List all products
 router.get('/products', async (req: Request, res: Response) => {
@@ -341,4 +341,4 @@ router.get('/movements', async (req: Request, res: Response) => {
   }
 });
 
-export const inventoryRoutes = router;
+export const inventoryRoutes: Router = router;

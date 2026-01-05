@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../../config';
 
-const router = Router();
+const router: Router = Router();
 
 // Get professional profile
 router.get('/profile', async (req: Request, res: Response) => {
@@ -501,7 +501,7 @@ router.post('/ratings/:ratingId/respond', async (req: Request, res: Response) =>
 router.post('/referral/:referralCode', async (req: Request, res: Response) => {
   try {
     const { referralCode } = req.params;
-    const { clientId } = req.body;
+    const { clientId: _clientId } = req.body;
 
     const profile = await prisma.professionalProfile.findUnique({
       where: { referralCode },
@@ -524,4 +524,4 @@ router.post('/referral/:referralCode', async (req: Request, res: Response) => {
   }
 });
 
-export const professionalRoutes = router;
+export const professionalRoutes: Router = router;
