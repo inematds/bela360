@@ -400,9 +400,10 @@ cat backup_20240104.sql | docker compose -f docker-compose.prod.yml exec -T post
 # Ver logs detalhados
 docker compose -f docker-compose.prod.yml logs api --tail=100
 
-# Erros comuns:
-# - "Queue name cannot contain :" -> Ja corrigido no codigo
-# - "maxRetriesPerRequest must be null" -> Ja corrigido no codigo
+# Erros comuns (ja corrigidos no codigo):
+# - "Queue name cannot contain :" -> Nomes das filas corrigidos
+# - "maxRetriesPerRequest must be null" -> bullmqConnection separada
+# - "Prisma failed to detect libssl" -> OpenSSL instalado no Dockerfile
 ```
 
 ### Erro de conexao com banco

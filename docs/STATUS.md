@@ -43,6 +43,11 @@ O projeto bela360 e uma plataforma de automacao para negocios de beleza (saloes,
 - Criada conexao separada `bullmqConnection` para as filas
 - Arquivo: `apps/api/src/config/redis.ts`
 
+### 5. OpenSSL no Dockerfile da API
+- Prisma requer OpenSSL para conectar ao PostgreSQL no Alpine Linux
+- Adicionado `openssl openssl-dev` no Dockerfile
+- Arquivo: `docker/api/Dockerfile:8`
+
 ---
 
 ## Backend (API) - Modulos Implementados
