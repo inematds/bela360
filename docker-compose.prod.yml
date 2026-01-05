@@ -63,27 +63,35 @@ services:
     image: evoapicloud/evolution-api:v2.3.7
     container_name: bela360-evolution
     restart: always
-    network_mode: host
+    ports:
+      - "127.0.0.1:8080:8080"
     environment:
       - SERVER_URL=${EVOLUTION_PUBLIC_URL:-http://localhost:8080}
       - AUTHENTICATION_TYPE=apikey
       - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY}
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB}?schema=evolution
+      - DATABASE_CONNECTION_URI=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=evolution
       - CACHE_REDIS_ENABLED=true
-      - CACHE_REDIS_URI=redis://localhost:6379
+      - CACHE_REDIS_URI=redis://redis:6379
       - CACHE_REDIS_PREFIX_KEY=evolution
       - CACHE_LOCAL_ENABLED=false
       - WEBSOCKET_ENABLED=true
       - LOG_LEVEL=ERROR,WARN,DEBUG,INFO,LOG,VERBOSE,DARK,WEBHOOKS,WEBSOCKET
-      - LOG_BAILEYS=trace
+      - LOG_BAILEYS=info
       - CONFIG_SESSION_PHONE_VERSION=2.3000.0
-      - WEBHOOK_GLOBAL_URL=http://localhost:3001/api/webhooks/whatsapp
+      - WEBHOOK_GLOBAL_URL=http://api:3001/api/webhooks/whatsapp
       - WEBHOOK_GLOBAL_ENABLED=true
     volumes:
       - evolution_instances:/evolution/instances
       - evolution_store:/evolution/store
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - bela360-network
     deploy:
       resources:
         limits:
