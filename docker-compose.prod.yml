@@ -90,6 +90,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
     networks:
       - bela360-network
     deploy:
@@ -170,9 +176,12 @@ services:
       - ./docker/nginx/certs:/etc/nginx/certs:ro
       - nginx_cache:/var/cache/nginx
     depends_on:
-      - web
-      - api
-      - evolution-api
+      web:
+        condition: service_started
+      api:
+        condition: service_started
+      evolution-api:
+        condition: service_healthy
     networks:
       - bela360-network
     deploy:
