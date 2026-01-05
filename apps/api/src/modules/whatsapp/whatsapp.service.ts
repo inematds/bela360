@@ -41,10 +41,24 @@ export class WhatsAppService {
   }
 
   /**
-   * Create a new WhatsApp instance
+   * Create a new WhatsApp instance (or return existing one)
    */
   async createInstance(): Promise<InstanceInfo> {
     try {
+      // First check if instance already exists
+      const existingInstances = await this.client.get('/instance/fetchInstances');
+      const existing = existingInstances.data?.find(
+        (inst: { name: string }) => inst.name === this.instanceName
+      );
+
+      if (existing) {
+        logger.info({ instanceName: this.instanceName }, 'WhatsApp instance already exists');
+        return {
+          instanceName: this.instanceName,
+          state: existing.connectionStatus || 'disconnected',
+        };
+      }
+
       const response = await this.client.post('/instance/create', {
         instanceName: this.instanceName,
         qrcode: true,
@@ -78,7 +92,8 @@ export class WhatsAppService {
   async getQRCode(): Promise<string> {
     try {
       const response = await this.client.get(`/instance/connect/${this.instanceName}`);
-      return response.data.qrcode?.base64 || response.data.qrcode;
+      // Evolution API v2 returns base64 directly in the response
+      return response.data.base64 || response.data.qrcode?.base64 || response.data.qrcode;
     } catch (error) {
       logger.error({ error, instanceName: this.instanceName }, 'Failed to get QR code');
       throw error;
