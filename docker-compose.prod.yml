@@ -56,7 +56,7 @@ services:
   # Evolution API
   # ===========================================
   evolution-api:
-    image: atendai/evolution-api:latest
+    image: atendai/evolution-api:v2.1.1
     container_name: bela360-evolution
     restart: always
     environment:
