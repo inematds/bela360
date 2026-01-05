@@ -1,10 +1,12 @@
 # Status do Projeto bela360
 
-**Data da ultima atualizacao:** 2024-01-04
+**Data da ultima atualizacao:** 2025-01-04
 
 ## Resumo Executivo
 
-O projeto bela360 e uma plataforma de automacao para negocios de beleza (saloes, barbearias, clinicas de estetica) com integracao WhatsApp. O MVP esta aproximadamente 80% completo.
+O projeto bela360 e uma plataforma de automacao para negocios de beleza (saloes, barbearias, clinicas de estetica) com integracao WhatsApp. O MVP esta aproximadamente 85% completo.
+
+**Dominio de producao:** bela360.inema.online
 
 ---
 
@@ -16,6 +18,30 @@ O projeto bela360 e uma plataforma de automacao para negocios de beleza (saloes,
 | Frontend (Next.js 14) | ✅ Passando | Build otimizado |
 | Prisma Schema | ✅ Completo | 12 tabelas definidas |
 | Docker Compose | ✅ Configurado | Dev e Prod |
+| Docker Build | ✅ Funcionando | API e Web buildando |
+
+---
+
+## Correcoes Aplicadas (Deploy)
+
+### 1. Dockerfile da API
+- Adicionado build do pacote `@bela360/shared` antes da API
+- Arquivo: `docker/api/Dockerfile:69`
+
+### 2. Pasta public do Web
+- Adicionado `.gitkeep` em `apps/web/public/` para garantir que a pasta exista no Docker build
+
+### 3. Nomes das Filas BullMQ
+- BullMQ nao permite `:` nos nomes das filas
+- Alterado de `whatsapp:messages` para `whatsapp-messages`
+- Alterado de `whatsapp:send` para `whatsapp-send`
+- Alterado de `whatsapp:reminders` para `whatsapp-reminders`
+- Arquivo: `apps/api/src/modules/whatsapp/whatsapp.queue.ts`
+
+### 4. Conexao Redis para BullMQ
+- BullMQ requer `maxRetriesPerRequest: null`
+- Criada conexao separada `bullmqConnection` para as filas
+- Arquivo: `apps/api/src/config/redis.ts`
 
 ---
 
@@ -170,7 +196,7 @@ O projeto bela360 e uma plataforma de automacao para negocios de beleza (saloes,
 
 ### Alta Prioridade:
 1. [ ] Conectar frontend com API (substituir dados mockados)
-2. [ ] Criar arquivo `.env` com variaveis reais
+2. [x] Criar arquivo `.env` com variaveis reais - **FEITO**
 3. [ ] Rodar migracoes do Prisma em banco real
 4. [ ] Testar integracao WhatsApp com Evolution API
 5. [ ] Implementar proxy reverso no Next.js para API
@@ -188,6 +214,21 @@ O projeto bela360 e uma plataforma de automacao para negocios de beleza (saloes,
 13. [ ] Monitoramento (Sentry, logs)
 14. [ ] PWA para mobile
 15. [ ] Internacionalizacao
+
+---
+
+## Configuracao de Producao
+
+### Dominios Configurados:
+- **Frontend:** https://bela360.inema.online
+- **API:** https://api.bela360.inema.online
+- **Evolution API:** https://whatsapp.bela360.inema.online
+
+### Arquivos de Configuracao:
+- `.env` - Variaveis de ambiente (nao versionado)
+- `.env.example` - Template das variaveis
+- `docker/nginx/nginx.conf` - Proxy reverso configurado
+- `docker-compose.prod.yml` - Docker para producao
 
 ---
 

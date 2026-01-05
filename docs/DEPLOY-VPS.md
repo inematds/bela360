@@ -2,6 +2,8 @@
 
 Guia passo a passo para colocar o bela360 em producao.
 
+**Dominio:** bela360.inema.online
+
 ---
 
 ## Requisitos da VPS
@@ -13,6 +15,8 @@ Guia passo a passo para colocar o bela360 em producao.
 - **Portas abertas:** 22 (SSH), 80 (HTTP), 443 (HTTPS)
 
 **Provedores sugeridos:** DigitalOcean, Vultr, Contabo, Hetzner
+
+**IMPORTANTE:** Use `docker compose` (sem hifen) nas versoes novas do Docker.
 
 ---
 
@@ -255,39 +259,35 @@ http {
 cd ~/bela360
 
 # Subir todos os containers
-docker-compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml up -d --build
 
 # Ver logs
-docker-compose -f docker-compose.prod.yml logs -f
+docker compose -f docker-compose.prod.yml logs -f
 ```
 
 ### 7.2 Rodar migracoes do banco
 ```bash
-# Entrar no container da API
-docker-compose -f docker-compose.prod.yml exec api sh
+# Aguardar postgres ficar healthy (~20 segundos)
+docker compose -f docker-compose.prod.yml ps
 
-# Dentro do container
-npx prisma migrate deploy
-npx prisma generate
-
-# Sair
-exit
+# Rodar migracao
+docker compose -f docker-compose.prod.yml exec api npx prisma migrate deploy
 ```
 
 ### 7.3 Verificar se esta rodando
 ```bash
-docker-compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml ps
 ```
 
 Deve mostrar todos os servicos "Up":
 ```
-NAME        STATUS
-api         Up
-web         Up
-postgres    Up
-redis       Up
-evolution   Up
-nginx       Up
+NAME              STATUS
+bela360-api       Up
+bela360-web       Up
+bela360-postgres  Up (healthy)
+bela360-redis     Up (healthy)
+bela360-evolution Up
+bela360-nginx     Up
 ```
 
 ---
@@ -345,79 +345,109 @@ sudo nano /etc/cron.d/certbot-renew
 ### Ver logs
 ```bash
 # Todos os servicos
-docker-compose -f docker-compose.prod.yml logs -f
+docker compose -f docker-compose.prod.yml logs -f
 
 # Servico especifico
-docker-compose -f docker-compose.prod.yml logs -f api
-docker-compose -f docker-compose.prod.yml logs -f web
+docker compose -f docker-compose.prod.yml logs -f api
+docker compose -f docker-compose.prod.yml logs -f web
+docker compose -f docker-compose.prod.yml logs api --tail=50
 ```
 
 ### Reiniciar servicos
 ```bash
 # Todos
-docker-compose -f docker-compose.prod.yml restart
+docker compose -f docker-compose.prod.yml restart
 
 # Especifico
-docker-compose -f docker-compose.prod.yml restart api
+docker compose -f docker-compose.prod.yml restart api
 ```
 
 ### Parar tudo
 ```bash
-docker-compose -f docker-compose.prod.yml down
+docker compose -f docker-compose.prod.yml down
 ```
 
 ### Atualizar codigo
 ```bash
 cd ~/bela360
 git pull origin main
-docker-compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml build --no-cache
+docker compose -f docker-compose.prod.yml up -d
+```
+
+### Rebuild apenas um servico
+```bash
+docker compose -f docker-compose.prod.yml build api --no-cache
+docker compose -f docker-compose.prod.yml up -d api
 ```
 
 ### Backup do banco
 ```bash
-docker-compose -f docker-compose.prod.yml exec postgres pg_dump -U bela360 bela360 > backup_$(date +%Y%m%d).sql
+docker compose -f docker-compose.prod.yml exec postgres pg_dump -U bela360 bela360 > backup_$(date +%Y%m%d).sql
 ```
 
 ### Restaurar backup
 ```bash
-cat backup_20240104.sql | docker-compose -f docker-compose.prod.yml exec -T postgres psql -U bela360 bela360
+cat backup_20240104.sql | docker compose -f docker-compose.prod.yml exec -T postgres psql -U bela360 bela360
 ```
 
 ---
 
 ## Troubleshooting
 
-### Container nao sobe
+### Container nao sobe / reiniciando em loop
 ```bash
 # Ver logs detalhados
-docker-compose -f docker-compose.prod.yml logs api --tail=100
+docker compose -f docker-compose.prod.yml logs api --tail=100
+
+# Erros comuns:
+# - "Queue name cannot contain :" -> Ja corrigido no codigo
+# - "maxRetriesPerRequest must be null" -> Ja corrigido no codigo
 ```
 
 ### Erro de conexao com banco
 ```bash
 # Verificar se postgres esta rodando
-docker-compose -f docker-compose.prod.yml ps postgres
+docker compose -f docker-compose.prod.yml ps postgres
 
 # Testar conexao
-docker-compose -f docker-compose.prod.yml exec api sh -c "nc -zv postgres 5432"
+docker compose -f docker-compose.prod.yml exec api sh -c "nc -zv postgres 5432"
 ```
 
 ### Erro 502 Bad Gateway
 ```bash
 # Verificar se os servicos estao saudaveis
-docker-compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml ps
 
 # Reiniciar nginx
-docker-compose -f docker-compose.prod.yml restart nginx
+docker compose -f docker-compose.prod.yml restart nginx
 ```
 
 ### WhatsApp nao conecta
 ```bash
 # Ver logs do Evolution
-docker-compose -f docker-compose.prod.yml logs evolution
+docker compose -f docker-compose.prod.yml logs evolution-api
 
 # Reiniciar Evolution
-docker-compose -f docker-compose.prod.yml restart evolution
+docker compose -f docker-compose.prod.yml restart evolution-api
+```
+
+### Erro no build da API
+```bash
+# Se der erro de "@bela360/shared not found"
+# O Dockerfile ja inclui build do shared antes da API
+
+# Rebuild completo
+docker compose -f docker-compose.prod.yml build api --no-cache
+```
+
+### Erro no build do Web
+```bash
+# Se der erro de "public folder not found"
+# Verificar se apps/web/public/.gitkeep existe
+
+# Rebuild completo
+docker compose -f docker-compose.prod.yml build web --no-cache
 ```
 
 ---
