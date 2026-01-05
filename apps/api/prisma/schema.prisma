@@ -107,6 +107,15 @@ model Business {
   messages        Message[]
   messageTemplates MessageTemplate[]
 
+  // Epic 6-10 relations
+  automations     Automation[]
+  waitlist        Waitlist[]
+  payments        Payment[]
+  commissionConfigs CommissionConfig[]
+  cashRegisters   CashRegister[]
+  campaigns       Campaign[]
+  clientRatings   ClientRating[]
+
   @@index([phone])
   @@index([status])
   @@map("businesses")
@@ -140,6 +149,14 @@ model User {
   services     ServiceProfessional[]
   workingHours WorkingHours[]
 
+  // Epic 6-10 relations
+  waitlistEntries    Waitlist[]
+  paymentsReceived   Payment[] @relation("ProfessionalPayments")
+  paymentsRegistered Payment[] @relation("RegisteredPayments")
+  commissionConfigs  CommissionConfig[] @relation("ProfessionalCommissionConfigs")
+  cashRegistersClosed CashRegister[]
+  ratings            ClientRating[] @relation("ProfessionalRatings")
+
   @@unique([businessId, phone])
   @@index([businessId])
   @@index([phone])
@@ -163,6 +180,11 @@ model Service {
   business     Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   professionals ServiceProfessional[]
   appointments Appointment[]
+
+  // Epic 6-10 relations
+  automations  Automation[]
+  waitlistEntries Waitlist[]
+  commissionConfigs CommissionConfig[]
 
   @@index([businessId])
   @@index([businessId, isActive])
@@ -210,6 +232,13 @@ model Client {
   appointments Appointment[]
   messages     Message[]
 
+  // Epic 6-10 relations
+  automationLogs     AutomationLog[]
+  waitlistEntries    Waitlist[]
+  payments           Payment[]
+  campaignRecipients CampaignRecipient[]
+  ratings            ClientRating[]
+
   @@unique([businessId, phone])
   @@index([businessId])
   @@index([phone])
@@ -246,6 +275,10 @@ model Appointment {
   client         Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
   professional   User              @relation("ProfessionalAppointments", fields: [professionalId], references: [id], onDelete: Cascade)
   service        Service           @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  // Epic 6-10 relations
+  payments       Payment[]
+  rating         ClientRating?
 
   @@index([businessId])
   @@index([businessId, startTime])
@@ -381,4 +414,401 @@ model DailyStats {
   @@index([businessId])
   @@index([businessId, date])
   @@map("daily_stats")
+}
+
+// ============================================
+// EPIC 6: AUTOMAÇÃO DE RELACIONAMENTO
+// ============================================
+
+enum AutomationType {
+  POST_APPOINTMENT   // Mensagem pós-atendimento
+  RETURN_REMINDER    // Lembrete de retorno
+  BIRTHDAY           // Aniversário
+  REACTIVATION       // Reativação de inativos
+}
+
+enum AutomationLogStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+model Automation {
+  id           String         @id @default(cuid())
+  businessId   String
+  type         AutomationType
+  isActive     Boolean        @default(true)
+
+  // Configuration
+  delayHours   Int?           // Delay após evento (ex: 2h após atendimento)
+  delayDays    Int?           // Delay em dias (ex: 30 dias para retorno)
+  sendTime     String?        // Horário de envio (ex: "09:00")
+
+  // Template
+  template     String         // Mensagem com variáveis {{nome}}, {{servico}}, etc.
+
+  // For return reminders - per service configuration
+  serviceId    String?        // Se específico para um serviço
+
+  // Stats
+  totalSent    Int            @default(0)
+  totalConverted Int          @default(0)  // Quantos geraram agendamento
+
+  // Timestamps
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  // Relations
+  business     Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  service      Service?       @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  logs         AutomationLog[]
+
+  @@unique([businessId, type, serviceId])
+  @@index([businessId])
+  @@index([businessId, type])
+  @@map("automations")
+}
+
+model AutomationLog {
+  id           String              @id @default(cuid())
+  automationId String
+  clientId     String
+  appointmentId String?            // Relacionado a qual agendamento (se aplicável)
+
+  // Status
+  status       AutomationLogStatus @default(PENDING)
+  scheduledFor DateTime            // Quando deve ser enviado
+  sentAt       DateTime?
+  failedReason String?
+
+  // Tracking
+  convertedToAppointment Boolean   @default(false)
+  convertedAppointmentId String?   // Se gerou novo agendamento
+
+  // Timestamps
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  // Relations
+  automation   Automation          @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  client       Client              @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([automationId])
+  @@index([clientId])
+  @@index([status, scheduledFor])
+  @@map("automation_logs")
+}
+
+// ============================================
+// EPIC 7: LISTA DE ESPERA
+// ============================================
+
+enum WaitlistStatus {
+  WAITING
+  NOTIFIED
+  CONVERTED
+  EXPIRED
+  CANCELLED
+}
+
+enum DayPeriod {
+  MORNING    // 06:00 - 12:00
+  AFTERNOON  // 12:00 - 18:00
+  EVENING    // 18:00 - 22:00
+  ANY
+}
+
+model Waitlist {
+  id             String         @id @default(cuid())
+  businessId     String
+  clientId       String
+  serviceId      String
+  professionalId String?        // null = qualquer profissional
+
+  // Preferences
+  desiredDate    DateTime       @db.Date
+  desiredPeriod  DayPeriod      @default(ANY)
+
+  // Status
+  status         WaitlistStatus @default(WAITING)
+  notifiedAt     DateTime?
+  expiresAt      DateTime?      // 30min após notificação
+
+  // Conversion tracking
+  convertedAppointmentId String?
+
+  // Priority (timestamp for FIFO)
+  priority       DateTime       @default(now())
+
+  // Timestamps
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  // Relations
+  business       Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  client         Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  service        Service        @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  professional   User?          @relation(fields: [professionalId], references: [id], onDelete: SetNull)
+
+  @@index([businessId])
+  @@index([businessId, desiredDate, status])
+  @@index([clientId])
+  @@index([status, desiredDate])
+  @@map("waitlist")
+}
+
+// ============================================
+// EPIC 9: CONTROLE FINANCEIRO
+// ============================================
+
+enum PaymentMethod {
+  CASH
+  PIX
+  CREDIT_CARD
+  DEBIT_CARD
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  PARTIAL
+  REFUNDED
+  CANCELLED
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  businessId     String
+  appointmentId  String
+  clientId       String
+  professionalId String
+
+  // Values
+  amount         Decimal       @db.Decimal(10, 2)
+  discount       Decimal       @default(0) @db.Decimal(10, 2)
+  finalAmount    Decimal       @db.Decimal(10, 2)
+
+  // Payment info
+  method         PaymentMethod
+  status         PaymentStatus @default(COMPLETED)
+
+  // Commission
+  commissionRate Decimal       @db.Decimal(5, 2)  // Percentage
+  commissionAmount Decimal     @db.Decimal(10, 2) // Calculated amount
+  businessAmount Decimal       @db.Decimal(10, 2) // What stays with business
+
+  // Receipt
+  receiptUrl     String?       // Photo of receipt if any
+  notes          String?
+
+  // Who registered
+  registeredById String
+
+  // Timestamps
+  paidAt         DateTime      @default(now())
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  // Relations
+  business       Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  appointment    Appointment   @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  client         Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  professional   User          @relation("ProfessionalPayments", fields: [professionalId], references: [id], onDelete: Cascade)
+  registeredBy   User          @relation("RegisteredPayments", fields: [registeredById], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([businessId, paidAt])
+  @@index([professionalId])
+  @@index([appointmentId])
+  @@map("payments")
+}
+
+model CommissionConfig {
+  id             String   @id @default(cuid())
+  businessId     String
+  professionalId String
+  serviceId      String?  // null = default for all services
+
+  // Rate
+  rate           Decimal  @db.Decimal(5, 2)  // Percentage (0-100)
+  fixedAmount    Decimal? @db.Decimal(10, 2) // Or fixed amount per service
+
+  // Timestamps
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  business       Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  professional   User     @relation("ProfessionalCommissionConfigs", fields: [professionalId], references: [id], onDelete: Cascade)
+  service        Service? @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, professionalId, serviceId])
+  @@index([businessId])
+  @@index([professionalId])
+  @@map("commission_configs")
+}
+
+model CashRegister {
+  id             String   @id @default(cuid())
+  businessId     String
+  date           DateTime @db.Date
+
+  // Totals by payment method
+  cashTotal      Decimal  @default(0) @db.Decimal(10, 2)
+  pixTotal       Decimal  @default(0) @db.Decimal(10, 2)
+  creditTotal    Decimal  @default(0) @db.Decimal(10, 2)
+  debitTotal     Decimal  @default(0) @db.Decimal(10, 2)
+  otherTotal     Decimal  @default(0) @db.Decimal(10, 2)
+
+  // Summary
+  totalRevenue   Decimal  @default(0) @db.Decimal(10, 2)
+  totalCommissions Decimal @default(0) @db.Decimal(10, 2)
+  businessProfit Decimal  @default(0) @db.Decimal(10, 2)
+
+  // Counts
+  appointmentCount Int    @default(0)
+
+  // Status
+  isClosed       Boolean  @default(false)
+  closedAt       DateTime?
+  closedById     String?
+
+  // Notes
+  notes          String?
+
+  // Timestamps
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  business       Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  closedBy       User?    @relation(fields: [closedById], references: [id], onDelete: SetNull)
+
+  @@unique([businessId, date])
+  @@index([businessId])
+  @@index([businessId, date])
+  @@map("cash_registers")
+}
+
+// ============================================
+// EPIC 10: MARKETING BÁSICO
+// ============================================
+
+enum ClientSegmentType {
+  ALL            // All active clients
+  VIP            // Top 10% by spending
+  NEW            // First visit in last 30 days
+  LOYAL          // 5+ visits
+  INACTIVE       // No visit in 60+ days
+  RECURRING      // 2-4 visits in 3 months
+  BIRTHDAY_MONTH // Clients with birthday this month
+  CUSTOM         // Custom segment
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  COMPLETED
+  CANCELLED
+}
+
+model Campaign {
+  id             String         @id @default(cuid())
+  businessId     String
+  name           String
+
+  // Target
+  segmentType    ClientSegmentType?
+  customFilter   Json?          // Custom filter criteria
+
+  // Content
+  message        String
+
+  // Scheduling
+  status         CampaignStatus @default(DRAFT)
+  scheduledFor   DateTime?
+  startedAt      DateTime?
+  completedAt    DateTime?
+
+  // Stats
+  totalRecipients Int           @default(0)
+  sentCount      Int            @default(0)
+  failedCount    Int            @default(0)
+  respondedCount Int            @default(0)
+  convertedCount Int            @default(0)  // Generated appointments
+
+  // Timestamps
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  // Relations
+  business       Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  recipients     CampaignRecipient[]
+
+  @@index([businessId])
+  @@index([businessId, status])
+  @@map("campaigns")
+}
+
+model CampaignRecipient {
+  id             String   @id @default(cuid())
+  campaignId     String
+  clientId       String
+
+  // Status
+  sentAt         DateTime?
+  deliveredAt    DateTime?
+  readAt         DateTime?
+  respondedAt    DateTime?
+  failed         Boolean  @default(false)
+  failedReason   String?
+
+  // Conversion
+  convertedToAppointment Boolean @default(false)
+  appointmentId  String?
+
+  // Timestamps
+  createdAt      DateTime @default(now())
+
+  // Relations
+  campaign       Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  client         Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, clientId])
+  @@index([campaignId])
+  @@index([clientId])
+  @@map("campaign_recipients")
+}
+
+// ============================================
+// CLIENT RATING (for post-appointment feedback)
+// ============================================
+
+model ClientRating {
+  id             String   @id @default(cuid())
+  businessId     String
+  clientId       String
+  appointmentId  String   @unique
+  professionalId String
+
+  // Rating
+  rating         Int      // 1-5 stars
+  comment        String?
+
+  // Timestamps
+  createdAt      DateTime @default(now())
+
+  // Relations
+  business       Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  client         Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  appointment    Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  professional   User        @relation("ProfessionalRatings", fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([professionalId])
+  @@index([clientId])
+  @@map("client_ratings")
 }

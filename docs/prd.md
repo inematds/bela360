@@ -19,6 +19,7 @@ O mercado de beleza no Brasil é fragmentado, com milhões de pequenos negócios
 | Date | Version | Description | Author |
 |------|---------|-------------|--------|
 | 2025-01-04 | 0.1 | Versão inicial do PRD | BMad Orchestrator |
+| 2026-01-05 | 0.2 | Adicionados Epics 6-10: Automação de Relacionamento, Lista de Espera, Multi-Profissional, Financeiro Real, Marketing Básico | BMad Orchestrator |
 
 ---
 
@@ -183,6 +184,21 @@ Módulos principais:
 
 ### Epic 5: Analytics & Dashboard
 **Goal:** Dashboard completo com métricas, relatórios e visão do negócio.
+
+### Epic 6: Automação de Relacionamento
+**Goal:** Automatizar comunicação pós-atendimento para fidelização - mensagens de agradecimento, retorno, aniversário e reativação de inativos.
+
+### Epic 7: Lista de Espera Inteligente
+**Goal:** Permitir que clientes entrem em lista de espera quando horário desejado não está disponível, com notificação automática quando liberar.
+
+### Epic 8: Multi-Profissional (Equipe)
+**Goal:** Suportar salões com múltiplos profissionais, cada um com sua agenda, serviços e comissões próprias.
+
+### Epic 9: Controle Financeiro Real
+**Goal:** Gestão financeira completa com registro de pagamentos, comissões por profissional, caixa diário e relatórios financeiros.
+
+### Epic 10: Marketing Básico
+**Goal:** Ferramentas de marketing com segmentação de clientes e campanhas automáticas baseadas em comportamento.
 
 ---
 
@@ -607,6 +623,360 @@ Módulos principais:
 3. Relatório mensal resumido (PDF)
 4. Envio do relatório por e-mail ou WhatsApp
 5. Histórico de relatórios gerados
+
+---
+
+## Epic 6: Automação de Relacionamento
+
+**Goal:** Automatizar comunicação pós-atendimento para fidelização - mensagens de agradecimento, retorno, aniversário e reativação de inativos.
+
+### Story 6.1: Mensagem Pós-Atendimento
+
+**As a** business owner,
+**I want** clients to receive a thank you message after their appointment,
+**so that** they feel valued and are more likely to return.
+
+**Acceptance Criteria:**
+1. Mensagem automática enviada 2 horas após horário do agendamento completado
+2. Mensagem personalizável com nome do cliente e serviço realizado
+3. Inclui pedido de avaliação (1-5 estrelas via botões)
+4. Resposta de avaliação registrada no perfil do cliente
+5. Opção de desativar por cliente específico
+6. Template padrão: "Olá {nome}! Obrigado pela visita hoje. Como foi seu {serviço}? Avalie de 1 a 5 ⭐"
+
+---
+
+### Story 6.2: Lembrete de Retorno
+
+**As a** business owner,
+**I want** clients to receive a return reminder based on service type,
+**so that** they book their next appointment proactively.
+
+**Acceptance Criteria:**
+1. Configuração de período de retorno por serviço (ex: corte = 30 dias, coloração = 45 dias)
+2. Mensagem automática X dias após último atendimento
+3. Mensagem inclui sugestão de agendamento com link/opção rápida
+4. Não enviar se cliente já tem agendamento futuro
+5. Máximo de 1 lembrete por período
+6. Log de lembretes enviados
+7. Template: "Oi {nome}! Já faz {dias} dias desde seu último {serviço}. Que tal agendar? 💇"
+
+---
+
+### Story 6.3: Mensagem de Aniversário
+
+**As a** business owner,
+**I want** clients to receive a birthday message,
+**so that** they feel special and may book an appointment.
+
+**Acceptance Criteria:**
+1. Campo de data de nascimento no cadastro do cliente
+2. Mensagem automática no dia do aniversário às 9h
+3. Opção de incluir desconto/promoção especial
+4. Não enviar se cliente está marcado como inativo
+5. Template: "Feliz aniversário, {nome}! 🎂 Como presente, preparamos algo especial para você..."
+
+---
+
+### Story 6.4: Reativação de Clientes Inativos
+
+**As a** business owner,
+**I want** to automatically reach out to inactive clients,
+**so that** I can bring them back.
+
+**Acceptance Criteria:**
+1. Cliente considerado inativo se não agendou nos últimos 60 dias (configurável)
+2. Campanha automática de reativação após período de inatividade
+3. Mensagem personalizável com tom de "sentimos sua falta"
+4. Opção de incluir promoção de retorno
+5. Máximo de 1 mensagem de reativação por cliente a cada 30 dias
+6. Marcar cliente como "não retornado" após 2 tentativas sem resposta
+7. Relatório de taxa de reativação
+8. Template: "Oi {nome}, sentimos sua falta! ❤️ Faz tempo que não nos vemos. Que tal voltar? Temos novidades!"
+
+---
+
+### Story 6.5: Central de Automações
+
+**As a** business owner,
+**I want** to manage all my automated messages in one place,
+**so that** I can control what is being sent.
+
+**Acceptance Criteria:**
+1. Tela listando todas as automações (pós-atendimento, retorno, aniversário, reativação)
+2. Toggle para ativar/desativar cada automação
+3. Edição de templates de mensagem
+4. Configuração de horários de envio
+5. Histórico de mensagens enviadas por automação
+6. Métricas: taxa de abertura, taxa de agendamento gerado
+
+---
+
+## Epic 7: Lista de Espera Inteligente
+
+**Goal:** Permitir que clientes entrem em lista de espera quando horário desejado não está disponível, com notificação automática quando liberar.
+
+### Story 7.1: Entrada na Lista de Espera
+
+**As a** client,
+**I want** to join a waitlist when my preferred time is not available,
+**so that** I can be notified if it opens up.
+
+**Acceptance Criteria:**
+1. Quando cliente tenta agendar horário ocupado, bot oferece opção de lista de espera
+2. Cliente informa: data desejada, período (manhã/tarde/noite) e serviço
+3. Confirmação de entrada na lista via WhatsApp
+4. Cliente pode estar em no máximo 3 listas simultaneamente
+5. Entrada registrada com timestamp
+
+---
+
+### Story 7.2: Notificação de Vaga Liberada
+
+**As a** client,
+**I want** to be notified when a slot opens up,
+**so that** I can quickly book it.
+
+**Acceptance Criteria:**
+1. Quando agendamento é cancelado, sistema verifica lista de espera para aquele período
+2. Notifica primeiro cliente da fila em até 1 minuto
+3. Cliente tem 30 minutos para confirmar interesse
+4. Se não responder, notifica próximo da fila
+5. Mensagem: "Boa notícia, {nome}! Liberou horário {hora} no dia {data}. Deseja agendar? Responda SIM em até 30min!"
+
+---
+
+### Story 7.3: Gestão da Lista de Espera
+
+**As a** business owner,
+**I want** to see and manage my waitlist,
+**so that** I can understand demand.
+
+**Acceptance Criteria:**
+1. Visualização da lista de espera por data
+2. Número de pessoas esperando por período
+3. Possibilidade de notificar manualmente
+4. Remoção de cliente da lista
+5. Métricas: taxa de conversão da lista de espera
+
+---
+
+## Epic 8: Multi-Profissional (Equipe)
+
+**Goal:** Suportar salões com múltiplos profissionais, cada um com sua agenda, serviços e comissões próprias.
+
+### Story 8.1: Cadastro de Profissionais
+
+**As a** business owner,
+**I want** to add team members to my business,
+**so that** clients can book with specific professionals.
+
+**Acceptance Criteria:**
+1. CRUD de profissionais (nome, telefone, foto, especialidades)
+2. Cada profissional vinculado ao negócio
+3. Profissional pode ter acesso próprio ao sistema (login separado)
+4. Níveis de acesso: Dono (tudo), Profissional (apenas sua agenda)
+5. Ativar/desativar profissional sem deletar
+6. Profissional pode ter serviços específicos que oferece
+
+---
+
+### Story 8.2: Agenda por Profissional
+
+**As a** business owner,
+**I want** each professional to have their own schedule,
+**so that** bookings are organized per person.
+
+**Acceptance Criteria:**
+1. Cada profissional com horários de trabalho próprios
+2. Visualização de agenda consolidada (todos) ou individual
+3. Bloqueios de horário por profissional (folga individual)
+4. Cores diferentes para cada profissional na visualização
+5. Filtro de agenda por profissional
+
+---
+
+### Story 8.3: Cliente Escolhe Profissional
+
+**As a** client,
+**I want** to choose which professional I want to book with,
+**so that** I can see my preferred stylist.
+
+**Acceptance Criteria:**
+1. Fluxo de agendamento: após escolher serviço, listar profissionais disponíveis
+2. Mostrar foto e nome do profissional
+3. Opção "sem preferência" para qualquer profissional disponível
+4. Horários exibidos são apenas do profissional escolhido
+5. Agendamento vinculado ao profissional específico
+
+---
+
+### Story 8.4: Visão do Profissional
+
+**As a** professional,
+**I want** to see only my appointments and earnings,
+**so that** I can manage my work.
+
+**Acceptance Criteria:**
+1. Login próprio do profissional
+2. Dashboard mostrando apenas seus agendamentos
+3. Visualização de seus ganhos (comissões)
+4. Notificações apenas de seus clientes
+5. Não pode ver dados de outros profissionais
+6. Pode adicionar observações nos seus clientes
+
+---
+
+## Epic 9: Controle Financeiro Real
+
+**Goal:** Gestão financeira completa com registro de pagamentos, comissões por profissional, caixa diário e relatórios financeiros.
+
+### Story 9.1: Registro de Pagamento
+
+**As a** business owner,
+**I want** to register payments for appointments,
+**so that** I have accurate financial records.
+
+**Acceptance Criteria:**
+1. Ao marcar agendamento como concluído, opção de registrar pagamento
+2. Formas de pagamento: Dinheiro, Pix, Cartão Crédito, Cartão Débito
+3. Valor padrão é o preço do serviço, mas editável (desconto)
+4. Opção de pagamento parcial
+5. Registro de quem recebeu o pagamento
+6. Comprovante opcional (foto do recibo)
+
+---
+
+### Story 9.2: Configuração de Comissões
+
+**As a** business owner,
+**I want** to configure commission rates per professional,
+**so that** payments are calculated automatically.
+
+**Acceptance Criteria:**
+1. Percentual de comissão por profissional (ex: 50%)
+2. Opção de comissão diferente por serviço
+3. Opção de comissão fixa por serviço (em vez de %)
+4. Visualização de regras de comissão ativas
+5. Histórico de alterações de comissão
+
+---
+
+### Story 9.3: Cálculo Automático de Comissões
+
+**As a** system,
+**I want** to automatically calculate commissions,
+**so that** professionals know their earnings.
+
+**Acceptance Criteria:**
+1. Comissão calculada automaticamente ao registrar pagamento
+2. Valor do salão vs valor do profissional exibidos
+3. Acúmulo de comissões por período
+4. Profissional visualiza suas comissões no app
+5. Relatório de comissões pendentes de repasse
+
+---
+
+### Story 9.4: Fechamento de Caixa
+
+**As a** business owner,
+**I want** to close the register daily,
+**so that** I know how much I earned each day.
+
+**Acceptance Criteria:**
+1. Resumo do dia: total recebido por forma de pagamento
+2. Breakdown: quanto é do salão vs comissões
+3. Comparativo com dia anterior e média
+4. Fechamento registra valores finais
+5. Histórico de fechamentos
+6. Alerta se houver pagamentos pendentes de registro
+
+---
+
+### Story 9.5: Relatório Financeiro
+
+**As a** business owner,
+**I want** to see financial reports,
+**so that** I understand my business profitability.
+
+**Acceptance Criteria:**
+1. Faturamento por período (dia, semana, mês)
+2. Breakdown por serviço
+3. Breakdown por profissional
+4. Breakdown por forma de pagamento
+5. Comissões pagas vs a pagar
+6. Ticket médio
+7. Comparativo com período anterior
+8. Exportação para CSV
+
+---
+
+## Epic 10: Marketing Básico
+
+**Goal:** Ferramentas de marketing com segmentação de clientes e campanhas automáticas baseadas em comportamento.
+
+### Story 10.1: Segmentação de Clientes
+
+**As a** business owner,
+**I want** to segment my clients automatically,
+**so that** I can target them with relevant messages.
+
+**Acceptance Criteria:**
+1. Segmentos automáticos:
+   - VIP: 5+ visitas nos últimos 3 meses
+   - Novos: primeira visita nos últimos 30 dias
+   - Inativos: sem visita há 60+ dias
+   - Recorrentes: 2-4 visitas nos últimos 3 meses
+2. Contador de clientes por segmento
+3. Visualização de lista por segmento
+4. Possibilidade de criar segmentos customizados (futuro)
+
+---
+
+### Story 10.2: Campanhas de Mensagem
+
+**As a** business owner,
+**I want** to send campaigns to client segments,
+**so that** I can promote services and fill my schedule.
+
+**Acceptance Criteria:**
+1. Selecionar segmento-alvo
+2. Compor mensagem (texto + emoji)
+3. Pré-visualização da mensagem
+4. Agendamento de envio (imediato ou data/hora)
+5. Confirmação de quantidade de destinatários
+6. Rate limiting: máximo 100 mensagens/hora
+7. Registro de campanha enviada
+
+---
+
+### Story 10.3: Campanhas para Horários Ociosos
+
+**As a** business owner,
+**I want** to promote empty slots,
+**so that** I can fill my schedule.
+
+**Acceptance Criteria:**
+1. Sistema identifica horários sem agendamento nos próximos 3 dias
+2. Sugestão de campanha: "Horário disponível amanhã às X, promoção de Y%"
+3. Envio para clientes que agendaram serviço similar antes
+4. Desconto aplicado automaticamente se cliente agendar pelo link
+5. Métricas: slots preenchidos via campanha
+
+---
+
+### Story 10.4: Métricas de Marketing
+
+**As a** business owner,
+**I want** to see if my campaigns worked,
+**so that** I can improve future ones.
+
+**Acceptance Criteria:**
+1. Lista de campanhas enviadas
+2. Por campanha: enviadas, respondidas, agendamentos gerados
+3. Taxa de conversão (agendamentos / enviadas)
+4. Melhor campanha do mês
+5. ROI estimado (faturamento gerado vs custo de mensagens)
 
 ---
 
