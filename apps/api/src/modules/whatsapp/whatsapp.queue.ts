@@ -1,5 +1,5 @@
 import { Queue, Worker, Job } from 'bullmq';
-import { redis, logger, prisma } from '../../config';
+import { bullmqConnection, logger, prisma } from '../../config';
 import { getWhatsAppService } from './whatsapp.service';
 import { analyzeIntent } from './whatsapp.chatbot';
 
@@ -25,7 +25,7 @@ interface SendReminderJob {
 
 // Create queues
 export const messageQueue = new Queue<ProcessMessageJob>('whatsapp-messages', {
-  connection: redis,
+  connection: bullmqConnection,
   defaultJobOptions: {
     attempts: 3,
     backoff: {
@@ -38,7 +38,7 @@ export const messageQueue = new Queue<ProcessMessageJob>('whatsapp-messages', {
 });
 
 export const sendQueue = new Queue<SendMessageJob>('whatsapp-send', {
-  connection: redis,
+  connection: bullmqConnection,
   defaultJobOptions: {
     attempts: 3,
     backoff: {
@@ -51,7 +51,7 @@ export const sendQueue = new Queue<SendMessageJob>('whatsapp-send', {
 });
 
 export const reminderQueue = new Queue<SendReminderJob>('whatsapp-reminders', {
-  connection: redis,
+  connection: bullmqConnection,
   defaultJobOptions: {
     attempts: 3,
     backoff: {
@@ -154,7 +154,7 @@ export const messageWorker = new Worker<ProcessMessageJob>(
       throw error;
     }
   },
-  { connection: redis, concurrency: 5 }
+  { connection: bullmqConnection, concurrency: 5 }
 );
 
 // Send message worker
@@ -183,7 +183,7 @@ export const sendWorker = new Worker<SendMessageJob>(
       throw error;
     }
   },
-  { connection: redis, concurrency: 10 }
+  { connection: bullmqConnection, concurrency: 10 }
 );
 
 // Reminder worker
@@ -249,7 +249,7 @@ export const reminderWorker = new Worker<SendReminderJob>(
       throw error;
     }
   },
-  { connection: redis, concurrency: 5 }
+  { connection: bullmqConnection, concurrency: 5 }
 );
 
 // Helper function to generate response based on intent
