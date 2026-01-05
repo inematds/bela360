@@ -7,6 +7,11 @@ const router: Router = Router();
 // Webhook endpoint (no auth required - called by Evolution API)
 router.post('/webhook', (req, res, next) => whatsappController.handleWebhook(req, res, next));
 
+// System instance setup (no auth - for initial setup only, protected by API key check)
+router.post('/system/setup', (req, res, next) => whatsappController.setupSystemInstance(req, res, next));
+router.get('/system/status', (req, res, next) => whatsappController.getSystemStatus(req, res, next));
+router.get('/system/qrcode', (req, res, next) => whatsappController.getSystemQRCode(req, res, next));
+
 // Protected endpoints
 router.use(authMiddleware);
 

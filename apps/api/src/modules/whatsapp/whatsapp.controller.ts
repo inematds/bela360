@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { prisma, logger } from '../../config';
-import { getWhatsAppService } from './whatsapp.service';
+import { prisma, logger, env } from '../../config';
+import { getWhatsAppService, getSystemWhatsAppService, SYSTEM_INSTANCE_NAME } from './whatsapp.service';
 import { messageQueue } from './whatsapp.queue';
 import { parseWebhookMessage } from './whatsapp.utils';
 import { AppError } from '../../common/errors';
@@ -18,6 +18,92 @@ const sendMessageSchema = z.object({
 });
 
 export class WhatsAppController {
+  /**
+   * Setup system WhatsApp instance (for OTP and system messages)
+   */
+  async setupSystemInstance(req: Request, res: Response, next: NextFunction) {
+    try {
+      // Simple API key check for setup endpoint
+      const apiKey = req.headers['x-api-key'] || req.query.apiKey;
+      if (apiKey !== env.EVOLUTION_API_KEY) {
+        throw new AppError('API key invalida', 401);
+      }
+
+      const systemWhatsApp = getSystemWhatsAppService();
+
+      // Create instance if not exists
+      await systemWhatsApp.createInstance();
+
+      // Configure webhook
+      const webhookUrl = `${env.API_URL || 'http://localhost:3001'}/api/whatsapp/webhook`;
+      await systemWhatsApp.configureWebhook({
+        url: webhookUrl,
+        events: ['connection.update', 'qrcode.updated'],
+      });
+
+      // Get QR code
+      const qrcode = await systemWhatsApp.getQRCode();
+
+      res.json({
+        success: true,
+        data: {
+          instanceName: SYSTEM_INSTANCE_NAME,
+          qrcode,
+          status: 'awaiting_scan',
+          message: 'Escaneie o QR Code com o WhatsApp que sera usado para enviar OTPs do sistema',
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get system instance status
+   */
+  async getSystemStatus(_req: Request, res: Response, _next: NextFunction) {
+    try {
+      const systemWhatsApp = getSystemWhatsAppService();
+      const status = await systemWhatsApp.getInstanceStatus();
+
+      res.json({
+        success: true,
+        data: {
+          instanceName: SYSTEM_INSTANCE_NAME,
+          state: status.state,
+          connected: status.state === 'open',
+        },
+      });
+    } catch (error) {
+      // Instance might not exist yet
+      res.json({
+        success: true,
+        data: {
+          instanceName: SYSTEM_INSTANCE_NAME,
+          state: 'not_configured',
+          connected: false,
+        },
+      });
+    }
+  }
+
+  /**
+   * Get system instance QR code
+   */
+  async getSystemQRCode(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const systemWhatsApp = getSystemWhatsAppService();
+      const qrcode = await systemWhatsApp.getQRCode();
+
+      res.json({
+        success: true,
+        data: { qrcode },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   /**
    * Connect WhatsApp instance for a business
    */

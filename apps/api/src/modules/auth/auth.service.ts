@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { prisma, redis, logger, env } from '../../config';
-import { getWhatsAppService } from '../whatsapp/whatsapp.service';
+import { getSystemWhatsAppService } from '../whatsapp/whatsapp.service';
 import { AppError } from '../../common/errors';
 
 interface TokenPayload {
@@ -71,18 +71,17 @@ export class AuthService {
     // Set cooldown
     await redis.setex(cooldownKey, this.OTP_COOLDOWN_SECONDS, '1');
 
-    // Send OTP via WhatsApp if business has WhatsApp connected
-    if (user.business.whatsappInstanceId && user.business.whatsappConnected) {
-      try {
-        const whatsapp = getWhatsAppService(user.business.whatsappInstanceId);
-        await whatsapp.sendText({
-          number: normalizedPhone,
-          text: `🔐 Seu código de acesso bela360:\n\n*${otp}*\n\nVálido por ${this.OTP_EXPIRY_MINUTES} minutos.\n\nSe você não solicitou este código, ignore esta mensagem.`,
-        });
-      } catch (error) {
-        logger.error({ error, phone: normalizedPhone }, 'Failed to send OTP via WhatsApp');
-        // Continue anyway - user might be logging in from a different business
-      }
+    // Send OTP via system WhatsApp instance
+    try {
+      const systemWhatsApp = getSystemWhatsAppService();
+      await systemWhatsApp.sendText({
+        number: normalizedPhone,
+        text: `🔐 Seu código de acesso bela360:\n\n*${otp}*\n\nVálido por ${this.OTP_EXPIRY_MINUTES} minutos.\n\nSe você não solicitou este código, ignore esta mensagem.`,
+      });
+      logger.info({ phone: normalizedPhone }, 'OTP sent via system WhatsApp');
+    } catch (error) {
+      logger.error({ error, phone: normalizedPhone }, 'Failed to send OTP via WhatsApp');
+      // Continue anyway - OTP is stored in Redis for manual verification during testing
     }
 
     // Also store OTP in Redis for backup verification

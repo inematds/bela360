@@ -22,8 +22,9 @@ const envSchema = z.object({
   EVOLUTION_API_KEY: z.string(),
   EVOLUTION_INSTANCE_NAME: z.string().default('bela360'),
 
-  // Frontend
+  // URLs
   FRONTEND_URL: z.string().url().default('http://localhost:3000'),
+  API_URL: z.string().url().default('http://localhost:3001'),
 
   // Logging
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),

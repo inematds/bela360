@@ -264,3 +264,16 @@ export class WhatsAppService {
 export function getWhatsAppService(instanceName: string): WhatsAppService {
   return new WhatsAppService(instanceName);
 }
+
+// Global system instance for OTP and system messages
+const SYSTEM_INSTANCE_NAME = 'bela360_system';
+let systemWhatsAppService: WhatsAppService | null = null;
+
+export function getSystemWhatsAppService(): WhatsAppService {
+  if (!systemWhatsAppService) {
+    systemWhatsAppService = new WhatsAppService(SYSTEM_INSTANCE_NAME);
+  }
+  return systemWhatsAppService;
+}
+
+export { SYSTEM_INSTANCE_NAME };
