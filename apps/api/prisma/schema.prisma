@@ -116,6 +116,16 @@ model Business {
   campaigns       Campaign[]
   clientRatings   ClientRating[]
 
+  // Epic 11-13 relations
+  loyaltyProgram  LoyaltyProgram?
+  loyaltyPoints   LoyaltyPoints[]
+  products        Product[]
+  stockMovements  StockMovement[]
+  professionalGoals ProfessionalGoal[]
+  professionalRankings ProfessionalRanking[]
+  marketingSuggestions MarketingSuggestion[]
+  contentTemplates ContentTemplate[]
+
   @@index([phone])
   @@index([status])
   @@map("businesses")
@@ -157,6 +167,11 @@ model User {
   cashRegistersClosed CashRegister[]
   ratings            ClientRating[] @relation("ProfessionalRatings")
 
+  // Epic 11-13 relations
+  stockMovements     StockMovement[]
+  professionalProfile ProfessionalProfile?
+  professionalRankings ProfessionalRanking[]
+
   @@unique([businessId, phone])
   @@index([businessId])
   @@index([phone])
@@ -185,6 +200,10 @@ model Service {
   automations  Automation[]
   waitlistEntries Waitlist[]
   commissionConfigs CommissionConfig[]
+
+  // Epic 11-12 relations
+  loyaltyRewards   LoyaltyReward[]
+  serviceProducts  ServiceProduct[]
 
   @@index([businessId])
   @@index([businessId, isActive])
@@ -238,6 +257,10 @@ model Client {
   payments           Payment[]
   campaignRecipients CampaignRecipient[]
   ratings            ClientRating[]
+
+  // Epic 11 relations
+  loyaltyPoints      LoyaltyPoints?
+  loyaltyRedemptions LoyaltyRedemption[]
 
   @@unique([businessId, phone])
   @@index([businessId])
@@ -798,6 +821,10 @@ model ClientRating {
   rating         Int      // 1-5 stars
   comment        String?
 
+  // Professional response
+  response       String?
+  respondedAt    DateTime?
+
   // Timestamps
   createdAt      DateTime @default(now())
 
@@ -811,4 +838,527 @@ model ClientRating {
   @@index([professionalId])
   @@index([clientId])
   @@map("client_ratings")
+}
+
+// ============================================
+// EPIC 11: PROGRAMA DE FIDELIDADE
+// ============================================
+
+enum LoyaltyTier {
+  BRONZE
+  SILVER
+  GOLD
+  DIAMOND
+}
+
+enum RewardType {
+  DISCOUNT_PERCENT
+  DISCOUNT_FIXED
+  FREE_SERVICE
+  FREE_PRODUCT
+  CASHBACK
+}
+
+enum PointsTransactionType {
+  EARNED
+  REDEEMED
+  EXPIRED
+  ADJUSTED
+  BONUS
+}
+
+model LoyaltyProgram {
+  id             String   @id @default(cuid())
+  businessId     String   @unique
+
+  // Configuration
+  isActive       Boolean  @default(true)
+  pointsPerReal  Decimal  @default(1) @db.Decimal(5, 2) // Points earned per R$1
+  useCashback    Boolean  @default(false)
+  cashbackPercent Decimal @default(5) @db.Decimal(5, 2)
+
+  // Tier thresholds
+  silverThreshold Int     @default(100)
+  goldThreshold   Int     @default(500)
+  diamondThreshold Int    @default(1000)
+
+  // Tier benefits (discount %)
+  bronzeDiscount  Decimal @default(0) @db.Decimal(5, 2)
+  silverDiscount  Decimal @default(5) @db.Decimal(5, 2)
+  goldDiscount    Decimal @default(10) @db.Decimal(5, 2)
+  diamondDiscount Decimal @default(15) @db.Decimal(5, 2)
+
+  // Expiration
+  pointsExpirationMonths Int @default(12)
+
+  // Timestamps
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  business       Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  rewards        LoyaltyReward[]
+
+  @@map("loyalty_programs")
+}
+
+model LoyaltyPoints {
+  id             String   @id @default(cuid())
+  businessId     String
+  clientId       String   @unique
+
+  // Balance
+  currentPoints  Int      @default(0)
+  totalEarned    Int      @default(0)
+  totalRedeemed  Int      @default(0)
+  totalExpired   Int      @default(0)
+
+  // Cashback balance (if using cashback mode)
+  cashbackBalance Decimal @default(0) @db.Decimal(10, 2)
+
+  // Tier
+  currentTier    LoyaltyTier @default(BRONZE)
+
+  // Timestamps
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  business       Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  client         Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  transactions   LoyaltyTransaction[]
+  redemptions    LoyaltyRedemption[]
+
+  @@index([businessId])
+  @@map("loyalty_points")
+}
+
+model LoyaltyTransaction {
+  id              String   @id @default(cuid())
+  loyaltyPointsId String
+  type            PointsTransactionType
+  points          Int      // Positive for earned, negative for redeemed
+  balance         Int      // Balance after transaction
+
+  // Reference
+  appointmentId   String?
+  redemptionId    String?
+  description     String?
+
+  // Expiration (for earned points)
+  expiresAt       DateTime?
+
+  // Timestamps
+  createdAt       DateTime @default(now())
+
+  // Relations
+  loyaltyPoints   LoyaltyPoints @relation(fields: [loyaltyPointsId], references: [id], onDelete: Cascade)
+
+  @@index([loyaltyPointsId])
+  @@index([expiresAt])
+  @@map("loyalty_transactions")
+}
+
+model LoyaltyReward {
+  id              String   @id @default(cuid())
+  programId       String
+  name            String
+  description     String?
+
+  // Cost
+  pointsCost      Int
+
+  // Reward details
+  type            RewardType
+  discountPercent Decimal? @db.Decimal(5, 2)
+  discountAmount  Decimal? @db.Decimal(10, 2)
+  serviceId       String?  // For free service
+  productId       String?  // For free product
+
+  // Limits
+  isActive        Boolean  @default(true)
+  validityDays    Int      @default(30)  // Coupon validity after redemption
+  maxRedemptions  Int?     // null = unlimited
+
+  // Stats
+  totalRedemptions Int     @default(0)
+
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  program         LoyaltyProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  service         Service?       @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  product         Product?       @relation(fields: [productId], references: [id], onDelete: SetNull)
+  redemptions     LoyaltyRedemption[]
+
+  @@index([programId])
+  @@map("loyalty_rewards")
+}
+
+model LoyaltyRedemption {
+  id              String   @id @default(cuid())
+  loyaltyPointsId String
+  rewardId        String
+  clientId        String
+
+  // Coupon
+  couponCode      String   @unique
+  pointsUsed      Int
+
+  // Status
+  isUsed          Boolean  @default(false)
+  usedAt          DateTime?
+  usedAppointmentId String?
+
+  // Validity
+  expiresAt       DateTime
+
+  // Timestamps
+  createdAt       DateTime @default(now())
+
+  // Relations
+  loyaltyPoints   LoyaltyPoints @relation(fields: [loyaltyPointsId], references: [id], onDelete: Cascade)
+  reward          LoyaltyReward @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  client          Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([loyaltyPointsId])
+  @@index([clientId])
+  @@index([couponCode])
+  @@map("loyalty_redemptions")
+}
+
+// ============================================
+// EPIC 12: CONTROLE DE ESTOQUE
+// ============================================
+
+enum ProductCategory {
+  RESALE        // Para revenda
+  INTERNAL_USE  // Uso interno apenas
+  BOTH          // Ambos
+}
+
+enum StockMovementType {
+  PURCHASE      // Compra
+  SALE          // Venda
+  SERVICE_USE   // Uso em serviço
+  ADJUSTMENT    // Ajuste manual
+  RETURN        // Devolução
+  LOSS          // Perda
+  EXPIRED       // Vencimento
+}
+
+model Product {
+  id             String          @id @default(cuid())
+  businessId     String
+  name           String
+  brand          String?
+  description    String?
+  sku            String?
+  barcode        String?
+
+  // Category
+  category       ProductCategory @default(INTERNAL_USE)
+
+  // Pricing
+  costPrice      Decimal         @db.Decimal(10, 2)
+  salePrice      Decimal?        @db.Decimal(10, 2)  // For resale
+
+  // Stock
+  currentStock   Decimal         @default(0) @db.Decimal(10, 3)
+  minStock       Decimal         @default(0) @db.Decimal(10, 3)
+  unit           String          @default("un") // un, ml, g, etc.
+
+  // Expiration
+  expirationDate DateTime?
+
+  // Status
+  isActive       Boolean         @default(true)
+  imageUrl       String?
+
+  // Timestamps
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  // Relations
+  business       Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  movements      StockMovement[]
+  serviceProducts ServiceProduct[]
+  loyaltyRewards  LoyaltyReward[]
+
+  @@unique([businessId, sku])
+  @@index([businessId])
+  @@index([businessId, category])
+  @@map("products")
+}
+
+model StockMovement {
+  id             String            @id @default(cuid())
+  businessId     String
+  productId      String
+  type           StockMovementType
+
+  // Quantity (positive for in, negative for out)
+  quantity       Decimal           @db.Decimal(10, 3)
+  previousStock  Decimal           @db.Decimal(10, 3)
+  newStock       Decimal           @db.Decimal(10, 3)
+
+  // Cost tracking
+  unitCost       Decimal?          @db.Decimal(10, 2)
+  totalCost      Decimal?          @db.Decimal(10, 2)
+
+  // Reference
+  appointmentId  String?           // If used in service
+  userId         String?           // Who made the movement
+  notes          String?
+
+  // Timestamps
+  createdAt      DateTime          @default(now())
+
+  // Relations
+  business       Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product        Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user           User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([businessId])
+  @@index([productId])
+  @@index([createdAt])
+  @@map("stock_movements")
+}
+
+model ServiceProduct {
+  id             String   @id @default(cuid())
+  serviceId      String
+  productId      String
+
+  // Usage per service
+  quantityUsed   Decimal  @db.Decimal(10, 3)
+
+  // Relations
+  service        Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([serviceId, productId])
+  @@map("service_products")
+}
+
+// ============================================
+// EPIC 13: PERFIL PROFISSIONAL & GAMIFICAÇÃO
+// ============================================
+
+enum GoalType {
+  REVENUE         // Faturamento
+  APPOINTMENTS    // Número de atendimentos
+  NEW_CLIENTS     // Novos clientes
+  RATING          // Avaliação média
+  RETURN_RATE     // Taxa de retorno
+}
+
+enum BadgeType {
+  MILESTONE       // 100 atendimentos, etc.
+  RATING          // 5 estrelas
+  STREAK          // Metas consecutivas
+  SPECIAL         // Tempo de casa, etc.
+}
+
+model ProfessionalProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+
+  // Public profile
+  slug            String   @unique // URL: /p/slug
+  bio             String?
+  specialties     String[] // Array of specialties
+  photoUrl        String?
+  coverPhotoUrl   String?
+
+  // Social links
+  instagramUrl    String?
+  facebookUrl     String?
+  tiktokUrl       String?
+
+  // Gallery
+  portfolioImages String[] // Array of image URLs
+
+  // Stats (denormalized)
+  totalAppointments Int     @default(0)
+  totalClients    Int       @default(0)
+  averageRating   Decimal   @default(0) @db.Decimal(3, 2)
+  totalRatings    Int       @default(0)
+
+  // Marketing
+  qrCodeUrl       String?
+  referralCode    String?   @unique
+  referralBonus   Decimal   @default(0) @db.Decimal(10, 2)  // Bonus for referred clients
+
+  // Stats tracking
+  clientsReferred Int       @default(0)
+
+  // Visibility
+  isPublic        Boolean   @default(true)
+
+  // Timestamps
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goals           ProfessionalGoal[]
+  badges          ProfessionalBadge[]
+
+  @@map("professional_profiles")
+}
+
+model ProfessionalGoal {
+  id              String   @id @default(cuid())
+  profileId       String
+  businessId      String
+
+  // Goal definition
+  type            GoalType
+  targetValue     Decimal  @db.Decimal(10, 2)
+  currentValue    Decimal  @default(0) @db.Decimal(10, 2)
+
+  // Period
+  month           Int      // 1-12
+  year            Int
+
+  // Status
+  isAchieved      Boolean  @default(false)
+  achievedAt      DateTime?
+
+  // Bonus
+  bonusAmount     Decimal? @db.Decimal(10, 2)
+  bonusPaid       Boolean  @default(false)
+
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  profile         ProfessionalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  business        Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, type, month, year])
+  @@index([profileId])
+  @@index([businessId, month, year])
+  @@map("professional_goals")
+}
+
+model ProfessionalBadge {
+  id              String   @id @default(cuid())
+  profileId       String
+  type            BadgeType
+  name            String
+  description     String?
+  iconUrl         String?
+
+  // Achievement details
+  requirement     String?  // e.g., "100 atendimentos"
+  achievedValue   String?  // e.g., "100"
+
+  // Timestamps
+  earnedAt        DateTime @default(now())
+
+  // Relations
+  profile         ProfessionalProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@map("professional_badges")
+}
+
+model ProfessionalRanking {
+  id              String   @id @default(cuid())
+  businessId      String
+  userId          String
+
+  // Period
+  month           Int
+  year            Int
+
+  // Metrics
+  revenue         Decimal  @default(0) @db.Decimal(10, 2)
+  appointments    Int      @default(0)
+  newClients      Int      @default(0)
+  averageRating   Decimal  @default(0) @db.Decimal(3, 2)
+  returnRate      Decimal  @default(0) @db.Decimal(5, 2)
+
+  // Ranking position
+  position        Int?
+
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, userId, month, year])
+  @@index([businessId, month, year])
+  @@map("professional_rankings")
+}
+
+// ============================================
+// EPIC 10 EXPANDED: MARKETING INTELIGENTE
+// ============================================
+
+model MarketingSuggestion {
+  id              String   @id @default(cuid())
+  businessId      String
+
+  // Suggestion
+  type            String   // EMPTY_SLOT, LOW_DEMAND_SERVICE, INACTIVE_SEGMENT, etc.
+  title           String
+  description     String
+  suggestedAction String?
+
+  // Data
+  metadata        Json?    // Additional data for the suggestion
+
+  // Status
+  isRead          Boolean  @default(false)
+  isActioned      Boolean  @default(false)
+  dismissedAt     DateTime?
+
+  // Timestamps
+  createdAt       DateTime @default(now())
+  expiresAt       DateTime?
+
+  // Relations
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([businessId, isRead])
+  @@map("marketing_suggestions")
+}
+
+model ContentTemplate {
+  id              String   @id @default(cuid())
+  businessId      String?  // null = global template
+
+  // Template info
+  name            String
+  category        String   // STORY, POST, WHATSAPP, PROMO
+  occasion        String?  // CHRISTMAS, VALENTINES, BIRTHDAY, etc.
+
+  // Content
+  content         String
+  imageUrl        String?
+  variables       String[] // Variables like {{business_name}}, {{promo_percent}}
+
+  // Status
+  isActive        Boolean  @default(true)
+
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  business        Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([category])
+  @@map("content_templates")
 }

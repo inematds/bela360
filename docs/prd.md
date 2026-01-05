@@ -20,6 +20,7 @@ O mercado de beleza no Brasil é fragmentado, com milhões de pequenos negócios
 |------|---------|-------------|--------|
 | 2025-01-04 | 0.1 | Versão inicial do PRD | BMad Orchestrator |
 | 2026-01-05 | 0.2 | Adicionados Epics 6-10: Automação de Relacionamento, Lista de Espera, Multi-Profissional, Financeiro Real, Marketing Básico | BMad Orchestrator |
+| 2026-01-05 | 0.3 | Adicionados Epics 11-13: Programa de Fidelidade, Controle de Estoque, Perfil Profissional. Expandido Epic 10 com IA | BMad Orchestrator |
 
 ---
 
@@ -197,8 +198,17 @@ Módulos principais:
 ### Epic 9: Controle Financeiro Real
 **Goal:** Gestão financeira completa com registro de pagamentos, comissões por profissional, caixa diário e relatórios financeiros.
 
-### Epic 10: Marketing Básico
-**Goal:** Ferramentas de marketing com segmentação de clientes e campanhas automáticas baseadas em comportamento.
+### Epic 10: Marketing Inteligente
+**Goal:** Ferramentas de marketing com segmentação de clientes, campanhas automáticas baseadas em comportamento e sugestões inteligentes via IA.
+
+### Epic 11: Programa de Fidelidade
+**Goal:** Sistema de pontos e recompensas para fidelização de clientes, com níveis, benefícios automáticos e cashback.
+
+### Epic 12: Controle de Estoque
+**Goal:** Gestão de produtos e insumos vinculados aos serviços, com alertas de reposição e controle de custos.
+
+### Epic 13: Perfil Profissional & Gamificação
+**Goal:** Mini-site público para cada profissional, sistema de avaliações, metas e ranking para motivação da equipe.
 
 ---
 
@@ -977,6 +987,325 @@ Módulos principais:
 3. Taxa de conversão (agendamentos / enviadas)
 4. Melhor campanha do mês
 5. ROI estimado (faturamento gerado vs custo de mensagens)
+
+---
+
+### Story 10.5: Sugestões Inteligentes de Promoções (IA)
+
+**As a** business owner,
+**I want** the system to suggest promotions based on data,
+**so that** I can optimize my marketing without manual analysis.
+
+**Acceptance Criteria:**
+1. IA analisa padrões de agendamento e identifica oportunidades
+2. Sugestões automáticas: "Terças têm 40% menos agendamentos, considere promoção"
+3. Identificação de serviços com baixa demanda
+4. Sugestão de desconto ideal baseado em histórico
+5. Previsão de impacto da promoção
+6. Notificação push/WhatsApp para o dono com sugestões semanais
+
+---
+
+### Story 10.6: Templates de Conteúdo
+
+**As a** business owner,
+**I want** ready-made content templates,
+**so that** I can post on social media without effort.
+
+**Acceptance Criteria:**
+1. Biblioteca de templates para Stories Instagram
+2. Templates para posts de Facebook/Instagram
+3. Templates de mensagens WhatsApp sazonais
+4. Personalização automática com nome do salão e cores
+5. Calendário de datas comemorativas com sugestões
+6. Download em formatos adequados para cada rede
+
+---
+
+### Story 10.7: Marketing por Profissional
+
+**As a** professional,
+**I want** my own marketing link and tracking,
+**so that** I can attract and retain my own clients.
+
+**Acceptance Criteria:**
+1. Link único de agendamento por profissional
+2. QR Code personalizado para divulgação
+3. Rastreamento de clientes captados por profissional
+4. Comissão bônus para clientes captados (configurável)
+5. Relatório de performance de captação
+6. Ranking de profissionais por novos clientes
+
+---
+
+## Epic 11: Programa de Fidelidade
+
+**Goal:** Sistema de pontos e recompensas para fidelização de clientes, com níveis, benefícios automáticos e cashback.
+
+### Story 11.1: Sistema de Pontos
+
+**As a** client,
+**I want** to earn points for each visit,
+**so that** I can exchange them for rewards.
+
+**Acceptance Criteria:**
+1. Pontos gerados automaticamente ao completar agendamento
+2. Regra padrão: 1 ponto para cada R$1 gasto
+3. Regras customizáveis pelo dono (multiplicadores por serviço)
+4. Saldo de pontos visível para cliente via WhatsApp
+5. Extrato de pontos ganhos e utilizados
+6. Pontos expiram após 12 meses sem movimentação
+
+---
+
+### Story 11.2: Níveis de Fidelidade
+
+**As a** business owner,
+**I want** to reward my best clients with VIP status,
+**so that** they feel special and keep coming back.
+
+**Acceptance Criteria:**
+1. Níveis automáticos: Bronze (0-99 pts), Prata (100-499 pts), Ouro (500-999 pts), Diamante (1000+ pts)
+2. Benefícios por nível configuráveis
+3. Notificação ao cliente quando sobe de nível
+4. Badge visual no perfil do cliente
+5. Prioridade na lista de espera para níveis altos
+6. Desconto automático por nível (ex: Diamante = 10% off)
+
+---
+
+### Story 11.3: Resgate de Recompensas
+
+**As a** client,
+**I want** to redeem my points for rewards,
+**so that** I get value from my loyalty.
+
+**Acceptance Criteria:**
+1. Catálogo de recompensas configurável pelo dono
+2. Tipos de recompensa: desconto %, desconto R$, serviço grátis, produto
+3. Resgate via WhatsApp ou app
+4. Cupom gerado automaticamente após resgate
+5. Validade do cupom configurável
+6. Histórico de resgates
+
+---
+
+### Story 11.4: Cashback Automático
+
+**As a** business owner,
+**I want** to offer cashback instead of points,
+**so that** I can provide a simpler reward system.
+
+**Acceptance Criteria:**
+1. Opção de ativar cashback em vez de pontos
+2. Percentual de cashback configurável (ex: 5%)
+3. Cashback creditado após 7 dias do atendimento
+4. Saldo de cashback visível para cliente
+5. Uso automático no próximo agendamento
+6. Opção de uso parcial do saldo
+
+---
+
+### Story 11.5: Painel de Fidelidade
+
+**As a** business owner,
+**I want** to see loyalty program performance,
+**so that** I can optimize rewards.
+
+**Acceptance Criteria:**
+1. Dashboard com métricas do programa
+2. Pontos emitidos vs resgatados
+3. Distribuição de clientes por nível
+4. Taxa de retorno de clientes no programa
+5. ROI do programa de fidelidade
+6. Clientes próximos de subir de nível
+
+---
+
+## Epic 12: Controle de Estoque
+
+**Goal:** Gestão de produtos e insumos vinculados aos serviços, com alertas de reposição e controle de custos.
+
+### Story 12.1: Cadastro de Produtos
+
+**As a** business owner,
+**I want** to register products and supplies,
+**so that** I can track my inventory.
+
+**Acceptance Criteria:**
+1. CRUD de produtos (nome, marca, categoria, unidade)
+2. Preço de custo e preço de venda
+3. Estoque mínimo para alerta
+4. Foto do produto (opcional)
+5. Código de barras/SKU
+6. Categorias: Revenda, Uso interno, Ambos
+
+---
+
+### Story 12.2: Movimentação de Estoque
+
+**As a** business owner,
+**I want** to track stock movements,
+**so that** I know where products are going.
+
+**Acceptance Criteria:**
+1. Entrada de estoque (compra, devolução)
+2. Saída de estoque (uso em serviço, venda, perda)
+3. Histórico de movimentações por produto
+4. Quem fez a movimentação e quando
+5. Ajuste de inventário manual
+6. Relatório de movimentações por período
+
+---
+
+### Story 12.3: Vinculação Produto-Serviço
+
+**As a** business owner,
+**I want** products to be linked to services,
+**so that** stock is automatically deducted.
+
+**Acceptance Criteria:**
+1. Configurar produtos usados por serviço
+2. Quantidade média de uso por serviço
+3. Baixa automática de estoque ao completar agendamento
+4. Custo do serviço calculado (produtos + comissão)
+5. Alerta se produto vinculado está em falta
+6. Margem de lucro real por serviço
+
+---
+
+### Story 12.4: Alertas de Estoque
+
+**As a** business owner,
+**I want** to be alerted when stock is low,
+**so that** I can reorder in time.
+
+**Acceptance Criteria:**
+1. Alerta quando produto atinge estoque mínimo
+2. Notificação via WhatsApp e/ou dashboard
+3. Lista de produtos para reposição
+4. Sugestão de quantidade baseada em consumo médio
+5. Alerta de produtos próximos do vencimento
+6. Relatório de produtos parados (sem movimento)
+
+---
+
+### Story 12.5: Relatórios de Estoque
+
+**As a** business owner,
+**I want** inventory reports,
+**so that** I can manage costs.
+
+**Acceptance Criteria:**
+1. Valor total do estoque atual
+2. Produtos mais consumidos
+3. Custo de produtos por período
+4. Comparativo custo vs faturamento
+5. Produtos com maior giro
+6. Exportação para CSV
+
+---
+
+## Epic 13: Perfil Profissional & Gamificação
+
+**Goal:** Mini-site público para cada profissional, sistema de avaliações, metas e ranking para motivação da equipe.
+
+### Story 13.1: Perfil Público do Profissional
+
+**As a** professional,
+**I want** my own public profile page,
+**so that** clients can learn about me and book directly.
+
+**Acceptance Criteria:**
+1. URL única por profissional (bela360.com/p/nome)
+2. Foto, bio, especialidades
+3. Galeria de trabalhos (portfólio)
+4. Avaliação média e número de atendimentos
+5. Serviços oferecidos com preços
+6. Botão de agendamento direto via WhatsApp
+7. Links para redes sociais
+
+---
+
+### Story 13.2: Sistema de Avaliações
+
+**As a** client,
+**I want** to rate my professional after the appointment,
+**so that** others can see their quality.
+
+**Acceptance Criteria:**
+1. Avaliação de 1-5 estrelas após atendimento
+2. Comentário opcional
+3. Avaliação vinculada ao profissional específico
+4. Média calculada automaticamente
+5. Avaliações visíveis no perfil público
+6. Profissional pode responder avaliações
+7. Filtro de avaliações por nota
+
+---
+
+### Story 13.3: Metas e Objetivos
+
+**As a** business owner,
+**I want** to set goals for my team,
+**so that** they stay motivated.
+
+**Acceptance Criteria:**
+1. Definir metas mensais por profissional
+2. Tipos de meta: faturamento, atendimentos, novos clientes, avaliação média
+3. Acompanhamento visual do progresso
+4. Notificação de meta atingida
+5. Histórico de metas cumpridas
+6. Bonificação automática por meta (opcional)
+
+---
+
+### Story 13.4: Ranking da Equipe
+
+**As a** professional,
+**I want** to see how I compare to colleagues,
+**so that** I can improve my performance.
+
+**Acceptance Criteria:**
+1. Ranking mensal de profissionais
+2. Critérios: faturamento, atendimentos, avaliação, taxa de retorno
+3. Pódio visual (1º, 2º, 3º lugar)
+4. Prêmio configurável para top performers
+5. Ranking visível apenas para a equipe
+6. Histórico de rankings anteriores
+
+---
+
+### Story 13.5: Conquistas e Badges
+
+**As a** professional,
+**I want** to earn badges for achievements,
+**so that** I feel recognized for my work.
+
+**Acceptance Criteria:**
+1. Badges automáticos: "100 atendimentos", "5 estrelas", "Cliente fiel", etc.
+2. Badge especial por tempo de casa
+3. Badge por meta batida consecutivamente
+4. Exibição no perfil do profissional
+5. Notificação de nova conquista
+6. Compartilhamento em redes sociais
+
+---
+
+### Story 13.6: Painel do Profissional Completo
+
+**As a** professional,
+**I want** a complete dashboard of my performance,
+**so that** I can track my growth.
+
+**Acceptance Criteria:**
+1. Resumo: atendimentos, faturamento, comissão do mês
+2. Gráfico de evolução mensal
+3. Minha posição no ranking
+4. Próxima meta e quanto falta
+5. Minhas conquistas/badges
+6. Meus clientes fiéis (top 10)
+7. Agenda da semana
 
 ---
 

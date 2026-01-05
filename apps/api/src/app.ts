@@ -16,6 +16,9 @@ import { automationRoutes } from './modules/automation';
 import { waitlistRoutes } from './modules/waitlist';
 import { financeRoutes } from './modules/finance';
 import { marketingRoutes } from './modules/marketing';
+import { loyaltyRoutes } from './modules/loyalty';
+import { inventoryRoutes } from './modules/inventory';
+import { professionalRoutes } from './modules/professional';
 import { authMiddleware } from './common/middleware/auth.middleware';
 
 // Create Express app
@@ -111,6 +114,9 @@ app.use('/api/automation', authMiddleware, automationRoutes);
 app.use('/api/waitlist', authMiddleware, waitlistRoutes);
 app.use('/api/finance', authMiddleware, financeRoutes);
 app.use('/api/marketing', authMiddleware, marketingRoutes);
+app.use('/api/loyalty', authMiddleware, loyaltyRoutes);
+app.use('/api/inventory', authMiddleware, inventoryRoutes);
+app.use('/api/professional', authMiddleware, professionalRoutes);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {
