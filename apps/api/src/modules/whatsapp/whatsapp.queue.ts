@@ -24,7 +24,7 @@ interface SendReminderJob {
 }
 
 // Create queues
-export const messageQueue = new Queue<ProcessMessageJob>('whatsapp:messages', {
+export const messageQueue = new Queue<ProcessMessageJob>('whatsapp-messages', {
   connection: redis,
   defaultJobOptions: {
     attempts: 3,
@@ -37,7 +37,7 @@ export const messageQueue = new Queue<ProcessMessageJob>('whatsapp:messages', {
   },
 });
 
-export const sendQueue = new Queue<SendMessageJob>('whatsapp:send', {
+export const sendQueue = new Queue<SendMessageJob>('whatsapp-send', {
   connection: redis,
   defaultJobOptions: {
     attempts: 3,
@@ -50,7 +50,7 @@ export const sendQueue = new Queue<SendMessageJob>('whatsapp:send', {
   },
 });
 
-export const reminderQueue = new Queue<SendReminderJob>('whatsapp:reminders', {
+export const reminderQueue = new Queue<SendReminderJob>('whatsapp-reminders', {
   connection: redis,
   defaultJobOptions: {
     attempts: 3,
@@ -65,7 +65,7 @@ export const reminderQueue = new Queue<SendReminderJob>('whatsapp:reminders', {
 
 // Message processing worker
 export const messageWorker = new Worker<ProcessMessageJob>(
-  'whatsapp:messages',
+  'whatsapp-messages',
   async (job: Job<ProcessMessageJob>) => {
     const { businessId, clientId, messageId, text, buttonResponse, listResponse } = job.data;
 
@@ -159,7 +159,7 @@ export const messageWorker = new Worker<ProcessMessageJob>(
 
 // Send message worker
 export const sendWorker = new Worker<SendMessageJob>(
-  'whatsapp:send',
+  'whatsapp-send',
   async (job: Job<SendMessageJob>) => {
     const { businessId, phone, message } = job.data;
 
@@ -188,7 +188,7 @@ export const sendWorker = new Worker<SendMessageJob>(
 
 // Reminder worker
 export const reminderWorker = new Worker<SendReminderJob>(
-  'whatsapp:reminders',
+  'whatsapp-reminders',
   async (job: Job<SendReminderJob>) => {
     const { appointmentId } = job.data;
 
