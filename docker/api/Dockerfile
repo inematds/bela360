@@ -5,7 +5,7 @@
 # Base stage with pnpm
 FROM node:20-alpine AS base
 RUN corepack enable && corepack prepare pnpm@latest --activate
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat openssl openssl-dev
 WORKDIR /app
 
 # ===========================================
