@@ -27,11 +27,29 @@ interface PaymentMethod {
   count: number;
 }
 
+interface Payment {
+  id: string;
+  clientName: string;
+  amount: number;
+  method: string;
+  createdAt: string;
+}
+
 export default function FinanceiroPage() {
   const [summary, setSummary] = useState<FinancialSummary | null>(null);
   const [byMethod, setByMethod] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('month');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showCloseCashModal, setShowCloseCashModal] = useState(false);
+  const [showCommissionsModal, setShowCommissionsModal] = useState(false);
+  const [paymentData, setPaymentData] = useState({
+    clientName: '',
+    amount: 0,
+    method: 'PIX',
+    description: '',
+  });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     // Simulated data - replace with API call
@@ -70,6 +88,58 @@ export default function FinanceiroPage() {
     CREDIT_CARD: 'Cartão Crédito',
     DEBIT_CARD: 'Cartão Débito',
     CASH: 'Dinheiro',
+  };
+
+  const handleCloseModals = () => {
+    setShowPaymentModal(false);
+    setShowCloseCashModal(false);
+    setShowCommissionsModal(false);
+    setPaymentData({ clientName: '', amount: 0, method: 'PIX', description: '' });
+  };
+
+  const handleSubmitPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!paymentData.clientName || paymentData.amount <= 0) {
+      alert('Cliente e valor sao obrigatorios');
+      return;
+    }
+
+    setSaving(true);
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Update summary
+    if (summary) {
+      setSummary({
+        ...summary,
+        totalRevenue: summary.totalRevenue + paymentData.amount,
+        transactionCount: summary.transactionCount + 1,
+        averageTicket: (summary.totalRevenue + paymentData.amount) / (summary.transactionCount + 1),
+        businessProfit: summary.businessProfit + (paymentData.amount * 0.7),
+      });
+    }
+
+    // Update payment method totals
+    setByMethod(prev => prev.map(m =>
+      m.method === paymentData.method
+        ? { ...m, total: m.total + paymentData.amount, count: m.count + 1 }
+        : m
+    ));
+
+    handleCloseModals();
+    setSaving(false);
+    alert('Pagamento registrado com sucesso!');
+  };
+
+  const handleCloseCash = async () => {
+    setSaving(true);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setSaving(false);
+    handleCloseModals();
+    alert('Caixa fechado com sucesso! Relatorio gerado.');
+  };
+
+  const handleExportReport = () => {
+    alert('Relatorio exportado com sucesso!');
   };
 
   if (loading) {
@@ -201,7 +271,10 @@ export default function FinanceiroPage() {
         <div className="bg-card rounded-lg border p-6">
           <h2 className="text-lg font-semibold mb-4">Ações Rápidas</h2>
           <div className="grid gap-3">
-            <button className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left">
+            <button
+              onClick={() => setShowPaymentModal(true)}
+              className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left"
+            >
               <div className="p-2 bg-green-100 rounded-lg">
                 <DollarSign className="h-5 w-5 text-green-600" />
               </div>
@@ -211,7 +284,10 @@ export default function FinanceiroPage() {
               </div>
             </button>
 
-            <button className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left">
+            <button
+              onClick={() => setShowCloseCashModal(true)}
+              className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left"
+            >
               <div className="p-2 bg-blue-100 rounded-lg">
                 <Calendar className="h-5 w-5 text-blue-600" />
               </div>
@@ -221,7 +297,10 @@ export default function FinanceiroPage() {
               </div>
             </button>
 
-            <button className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left">
+            <button
+              onClick={() => setShowCommissionsModal(true)}
+              className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left"
+            >
               <div className="p-2 bg-purple-100 rounded-lg">
                 <Users className="h-5 w-5 text-purple-600" />
               </div>
@@ -231,7 +310,10 @@ export default function FinanceiroPage() {
               </div>
             </button>
 
-            <button className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left">
+            <button
+              onClick={handleExportReport}
+              className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left"
+            >
               <div className="p-2 bg-orange-100 rounded-lg">
                 <TrendingUp className="h-5 w-5 text-orange-600" />
               </div>
@@ -243,6 +325,179 @@ export default function FinanceiroPage() {
           </div>
         </div>
       </div>
+
+      {/* Register Payment Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Registrar Pagamento</h2>
+            <form onSubmit={handleSubmitPayment} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Cliente *</label>
+                <input
+                  type="text"
+                  value={paymentData.clientName}
+                  onChange={(e) => setPaymentData(prev => ({ ...prev, clientName: e.target.value }))}
+                  placeholder="Nome do cliente"
+                  required
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Valor (R$) *</label>
+                <input
+                  type="number"
+                  value={paymentData.amount || ''}
+                  onChange={(e) => setPaymentData(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
+                  placeholder="0.00"
+                  min="0.01"
+                  step="0.01"
+                  required
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Forma de Pagamento</label>
+                <select
+                  value={paymentData.method}
+                  onChange={(e) => setPaymentData(prev => ({ ...prev, method: e.target.value }))}
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  <option value="PIX">PIX</option>
+                  <option value="CREDIT_CARD">Cartão de Crédito</option>
+                  <option value="DEBIT_CARD">Cartão de Débito</option>
+                  <option value="CASH">Dinheiro</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Descrição</label>
+                <input
+                  type="text"
+                  value={paymentData.description}
+                  onChange={(e) => setPaymentData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Ex: Corte + Escova"
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+              <div className="flex gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={handleCloseModals}
+                  disabled={saving}
+                  className="flex-1 px-4 py-2 border text-muted-foreground rounded-lg hover:bg-muted"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {saving ? 'Salvando...' : 'Registrar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Close Cash Modal */}
+      {showCloseCashModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Fechar Caixa</h2>
+            <div className="space-y-4">
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <p className="text-sm text-muted-foreground mb-2">Resumo do Dia</p>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span>Receita Total:</span>
+                    <span className="font-bold text-green-600">{formatCurrency(summary?.totalRevenue || 0)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Comissões:</span>
+                    <span className="font-bold text-orange-600">{formatCurrency(summary?.totalCommissions || 0)}</span>
+                  </div>
+                  <div className="flex justify-between border-t pt-2">
+                    <span>Lucro do Salão:</span>
+                    <span className="font-bold text-blue-600">{formatCurrency(summary?.businessProfit || 0)}</span>
+                  </div>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Ao fechar o caixa, um relatório será gerado automaticamente e as comissões serão calculadas.
+              </p>
+              <div className="flex gap-4 pt-4">
+                <button
+                  onClick={handleCloseModals}
+                  disabled={saving}
+                  className="flex-1 px-4 py-2 border text-muted-foreground rounded-lg hover:bg-muted"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleCloseCash}
+                  disabled={saving}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {saving ? 'Fechando...' : 'Confirmar Fechamento'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Commissions Modal */}
+      {showCommissionsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-start mb-4">
+              <h2 className="text-xl font-bold">Comissões Pendentes</h2>
+              <button onClick={handleCloseModals} className="text-muted-foreground hover:text-foreground">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div>
+                  <p className="font-medium">Ana</p>
+                  <p className="text-sm text-muted-foreground">12 atendimentos</p>
+                </div>
+                <p className="font-bold text-purple-600">{formatCurrency(1890)}</p>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div>
+                  <p className="font-medium">Carlos</p>
+                  <p className="text-sm text-muted-foreground">8 atendimentos</p>
+                </div>
+                <p className="font-bold text-purple-600">{formatCurrency(1245)}</p>
+              </div>
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div>
+                  <p className="font-medium">Julia</p>
+                  <p className="text-sm text-muted-foreground">10 atendimentos</p>
+                </div>
+                <p className="font-bold text-purple-600">{formatCurrency(1590)}</p>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t">
+              <div className="flex justify-between font-bold">
+                <span>Total Pendente:</span>
+                <span className="text-purple-600">{formatCurrency(4725)}</span>
+              </div>
+            </div>
+            <button
+              onClick={handleCloseModals}
+              className="w-full mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

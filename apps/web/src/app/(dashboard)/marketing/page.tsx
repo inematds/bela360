@@ -54,6 +54,14 @@ export default function MarketingPage() {
   const [segments, setSegments] = useState<SegmentOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [ratingStats, setRatingStats] = useState({ average: 4.7, total: 156 });
+  const [showNewCampaign, setShowNewCampaign] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    message: '',
+    segmentType: 'ALL',
+    scheduledDate: '',
+  });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     // Simulated data - replace with API call
@@ -97,6 +105,50 @@ export default function MarketingPage() {
     setLoading(false);
   }, []);
 
+  const handleCloseModal = () => {
+    setShowNewCampaign(false);
+    setFormData({ name: '', message: '', segmentType: 'ALL', scheduledDate: '' });
+  };
+
+  const getRecipientCount = (segmentType: string): number => {
+    if (!segments) return 0;
+    const segmentMap: Record<string, keyof SegmentOverview> = {
+      ALL: 'all',
+      NEW: 'new',
+      LOYAL: 'loyal',
+      INACTIVE: 'inactive',
+      VIP: 'vip',
+      BIRTHDAY_MONTH: 'birthdayMonth',
+    };
+    return segments[segmentMap[segmentType]] || 0;
+  };
+
+  const handleSubmitCampaign = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name || !formData.message) {
+      alert('Nome e mensagem sao obrigatorios');
+      return;
+    }
+
+    setSaving(true);
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    const newCampaign: Campaign = {
+      id: Date.now().toString(),
+      name: formData.name,
+      status: formData.scheduledDate ? 'SCHEDULED' : 'SENDING',
+      segmentType: formData.segmentType,
+      totalRecipients: getRecipientCount(formData.segmentType),
+      sentCount: 0,
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+
+    setCampaigns(prev => [newCampaign, ...prev]);
+    handleCloseModal();
+    setSaving(false);
+    alert(formData.scheduledDate ? 'Campanha agendada com sucesso!' : 'Campanha iniciada!');
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -118,7 +170,10 @@ export default function MarketingPage() {
           </p>
         </div>
 
-        <button className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90">
+        <button
+          onClick={() => setShowNewCampaign(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+        >
           <Plus className="h-4 w-4" />
           Nova Campanha
         </button>
@@ -241,6 +296,92 @@ export default function MarketingPage() {
           )}
         </div>
       </div>
+
+      {/* New Campaign Modal */}
+      {showNewCampaign && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold mb-4">Nova Campanha</h2>
+            <form onSubmit={handleSubmitCampaign} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Nome da campanha *</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Ex: Promocao de Verao"
+                  required
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Segmento de clientes</label>
+                <select
+                  value={formData.segmentType}
+                  onChange={(e) => setFormData(prev => ({ ...prev, segmentType: e.target.value }))}
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  {Object.entries(segmentInfo).map(([key, info]) => (
+                    <option key={key} value={key}>
+                      {info.name} ({getRecipientCount(key)} clientes)
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Mensagem *</label>
+                <textarea
+                  value={formData.message}
+                  onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
+                  placeholder="Digite a mensagem que sera enviada aos clientes..."
+                  rows={4}
+                  required
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Use {'{nome}'} para personalizar com o nome do cliente
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Agendar envio (opcional)</label>
+                <input
+                  type="datetime-local"
+                  value={formData.scheduledDate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, scheduledDate: e.target.value }))}
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Deixe vazio para enviar imediatamente
+                </p>
+              </div>
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <p className="text-sm font-medium">Resumo da campanha:</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Sera enviada para <span className="font-bold">{getRecipientCount(formData.segmentType)}</span> clientes
+                  do segmento <span className="font-bold">{segmentInfo[formData.segmentType as keyof typeof segmentInfo]?.name}</span>
+                </p>
+              </div>
+              <div className="flex gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  disabled={saving}
+                  className="flex-1 px-4 py-2 border text-muted-foreground rounded-lg hover:bg-muted"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {saving ? 'Criando...' : formData.scheduledDate ? 'Agendar Campanha' : 'Enviar Agora'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

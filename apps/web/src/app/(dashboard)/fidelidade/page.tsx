@@ -49,6 +49,14 @@ export default function FidelidadePage() {
   const [recentRedemptions, setRecentRedemptions] = useState<Redemption[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewReward, setShowNewReward] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    pointsCost: 100,
+    type: 'DISCOUNT_PERCENT',
+    discountValue: 10,
+  });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     // Simulated data - replace with API call
@@ -87,6 +95,42 @@ export default function FidelidadePage() {
     SILVER: 'Prata',
     GOLD: 'Ouro',
     DIAMOND: 'Diamante',
+  };
+
+  const rewardTypeLabels: Record<string, string> = {
+    DISCOUNT_PERCENT: 'Desconto Percentual',
+    DISCOUNT_AMOUNT: 'Desconto em Reais',
+    FREE_SERVICE: 'Servico Gratuito',
+    PRODUCT: 'Produto',
+  };
+
+  const handleCloseModal = () => {
+    setShowNewReward(false);
+    setFormData({ name: '', description: '', pointsCost: 100, type: 'DISCOUNT_PERCENT', discountValue: 10 });
+  };
+
+  const handleSubmitNewReward = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name || formData.pointsCost <= 0) {
+      alert('Nome e custo em pontos sao obrigatorios');
+      return;
+    }
+
+    setSaving(true);
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    const newReward: Reward = {
+      id: Date.now().toString(),
+      name: formData.name,
+      description: formData.description,
+      pointsCost: formData.pointsCost,
+      type: formData.type,
+      totalRedemptions: 0,
+    };
+
+    setRewards(prev => [...prev, newReward]);
+    handleCloseModal();
+    setSaving(false);
   };
 
   if (loading) {
@@ -270,6 +314,96 @@ export default function FidelidadePage() {
           </div>
         </div>
       </div>
+
+      {/* New Reward Modal */}
+      {showNewReward && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Nova Recompensa</h2>
+            <form onSubmit={handleSubmitNewReward} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Nome da recompensa *</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Ex: Desconto 15%"
+                  required
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Descricao</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Descreva a recompensa..."
+                  rows={2}
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Tipo de recompensa</label>
+                <select
+                  value={formData.type}
+                  onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value }))}
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  <option value="DISCOUNT_PERCENT">Desconto Percentual (%)</option>
+                  <option value="DISCOUNT_AMOUNT">Desconto em Reais (R$)</option>
+                  <option value="FREE_SERVICE">Servico Gratuito</option>
+                  <option value="PRODUCT">Produto</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Custo em pontos *</label>
+                  <input
+                    type="number"
+                    value={formData.pointsCost || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, pointsCost: parseInt(e.target.value) || 0 }))}
+                    placeholder="100"
+                    min="1"
+                    required
+                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    {formData.type === 'DISCOUNT_PERCENT' ? 'Desconto (%)' : 'Valor (R$)'}
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.discountValue || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, discountValue: parseFloat(e.target.value) || 0 }))}
+                    placeholder={formData.type === 'DISCOUNT_PERCENT' ? '10' : '50'}
+                    min="0"
+                    step={formData.type === 'DISCOUNT_PERCENT' ? '1' : '0.01'}
+                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  disabled={saving}
+                  className="flex-1 px-4 py-2 border text-muted-foreground rounded-lg hover:bg-muted"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {saving ? 'Salvando...' : 'Criar Recompensa'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

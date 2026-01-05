@@ -51,6 +51,25 @@ export default function EstoquePage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
+  const [showNewModal, setShowNewModal] = useState(false);
+  const [showMovementModal, setShowMovementModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    brand: '',
+    sku: '',
+    category: 'INTERNAL_USE',
+    costPrice: 0,
+    minStock: 0,
+    initialStock: 0,
+    unit: 'un',
+  });
+  const [movementData, setMovementData] = useState({
+    type: 'PURCHASE',
+    quantity: 0,
+    notes: '',
+  });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     // Simulated data - replace with API call
@@ -100,6 +119,87 @@ export default function EstoquePage() {
 
   const isLowStock = (product: Product) => product.currentStock <= product.minStock;
 
+  const handleCloseModals = () => {
+    setShowNewModal(false);
+    setShowMovementModal(false);
+    setSelectedProduct(null);
+    setFormData({ name: '', brand: '', sku: '', category: 'INTERNAL_USE', costPrice: 0, minStock: 0, initialStock: 0, unit: 'un' });
+    setMovementData({ type: 'PURCHASE', quantity: 0, notes: '' });
+  };
+
+  const handleProductClick = (product: Product) => {
+    setSelectedProduct(product);
+    setShowMovementModal(true);
+  };
+
+  const handleSubmitNewProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name || formData.costPrice <= 0) {
+      alert('Nome e preco de custo sao obrigatorios');
+      return;
+    }
+
+    setSaving(true);
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    const newProduct: Product = {
+      id: Date.now().toString(),
+      name: formData.name,
+      brand: formData.brand,
+      sku: formData.sku || `SKU${Date.now().toString(36).toUpperCase()}`,
+      category: formData.category,
+      currentStock: formData.initialStock,
+      minStock: formData.minStock,
+      costPrice: formData.costPrice,
+      unit: formData.unit,
+    };
+
+    setProducts(prev => [...prev, newProduct]);
+    if (stats) {
+      setStats({ ...stats, totalProducts: stats.totalProducts + 1 });
+    }
+    handleCloseModals();
+    setSaving(false);
+  };
+
+  const handleSubmitMovement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedProduct || movementData.quantity === 0) {
+      alert('Quantidade deve ser diferente de zero');
+      return;
+    }
+
+    setSaving(true);
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    const isIncoming = ['PURCHASE', 'RETURN', 'ADJUSTMENT'].includes(movementData.type) && movementData.quantity > 0;
+    const quantityChange = isIncoming ? Math.abs(movementData.quantity) : -Math.abs(movementData.quantity);
+    const newStock = selectedProduct.currentStock + quantityChange;
+
+    if (newStock < 0) {
+      alert('Estoque insuficiente');
+      setSaving(false);
+      return;
+    }
+
+    setProducts(prev => prev.map(p =>
+      p.id === selectedProduct.id ? { ...p, currentStock: newStock } : p
+    ));
+
+    const newMovement: StockMovement = {
+      id: Date.now().toString(),
+      type: movementData.type,
+      quantity: quantityChange,
+      createdAt: new Date().toISOString(),
+      product: { name: selectedProduct.name },
+      user: { name: 'Usuario' },
+    };
+    setMovements(prev => [newMovement, ...prev]);
+
+    handleCloseModals();
+    setSaving(false);
+  };
+
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.brand.toLowerCase().includes(search.toLowerCase()) ||
@@ -131,7 +231,10 @@ export default function EstoquePage() {
           </p>
         </div>
 
-        <button className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90">
+        <button
+          onClick={() => setShowNewModal(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+        >
           <Plus className="h-4 w-4" />
           Novo Produto
         </button>
@@ -231,7 +334,8 @@ export default function EstoquePage() {
             {filteredProducts.map((product) => (
               <div
                 key={product.id}
-                className={`flex items-center justify-between p-3 rounded-lg ${
+                onClick={() => handleProductClick(product)}
+                className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors hover:opacity-80 ${
                   isLowStock(product) ? 'bg-red-50 border border-red-200' : 'bg-muted/50'
                 }`}
               >
@@ -293,6 +397,224 @@ export default function EstoquePage() {
           </button>
         </div>
       </div>
+
+      {/* New Product Modal */}
+      {showNewModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold mb-4">Novo Produto</h2>
+            <form onSubmit={handleSubmitNewProduct} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Nome do produto *</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Ex: Shampoo Profissional 1L"
+                  required
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Marca</label>
+                  <input
+                    type="text"
+                    value={formData.brand}
+                    onChange={(e) => setFormData(prev => ({ ...prev, brand: e.target.value }))}
+                    placeholder="Ex: LOreal"
+                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">SKU</label>
+                  <input
+                    type="text"
+                    value={formData.sku}
+                    onChange={(e) => setFormData(prev => ({ ...prev, sku: e.target.value }))}
+                    placeholder="Codigo interno"
+                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Categoria</label>
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  <option value="INTERNAL_USE">Uso Interno</option>
+                  <option value="FOR_SALE">Revenda</option>
+                  <option value="BOTH">Ambos</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Preco de Custo (R$) *</label>
+                  <input
+                    type="number"
+                    value={formData.costPrice || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, costPrice: parseFloat(e.target.value) || 0 }))}
+                    placeholder="0.00"
+                    min="0"
+                    step="0.01"
+                    required
+                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Unidade</label>
+                  <select
+                    value={formData.unit}
+                    onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value }))}
+                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  >
+                    <option value="un">Unidade</option>
+                    <option value="ml">Mililitros</option>
+                    <option value="g">Gramas</option>
+                    <option value="kg">Quilogramas</option>
+                    <option value="L">Litros</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Estoque Inicial</label>
+                  <input
+                    type="number"
+                    value={formData.initialStock || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, initialStock: parseInt(e.target.value) || 0 }))}
+                    placeholder="0"
+                    min="0"
+                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Estoque Minimo</label>
+                  <input
+                    type="number"
+                    value={formData.minStock || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, minStock: parseInt(e.target.value) || 0 }))}
+                    placeholder="0"
+                    min="0"
+                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={handleCloseModals}
+                  disabled={saving}
+                  className="flex-1 px-4 py-2 border text-muted-foreground rounded-lg hover:bg-muted"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {saving ? 'Salvando...' : 'Criar Produto'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Stock Movement Modal */}
+      {showMovementModal && selectedProduct && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h2 className="text-xl font-bold">Movimentacao de Estoque</h2>
+                <p className="text-sm text-muted-foreground">{selectedProduct.name}</p>
+              </div>
+              <button onClick={handleCloseModals} className="text-muted-foreground hover:text-foreground">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mb-4 p-3 bg-muted/50 rounded-lg">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Estoque Atual:</span>
+                <span className="font-bold">{selectedProduct.currentStock} {selectedProduct.unit}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Estoque Minimo:</span>
+                <span>{selectedProduct.minStock} {selectedProduct.unit}</span>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmitMovement} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Tipo de Movimentacao</label>
+                <select
+                  value={movementData.type}
+                  onChange={(e) => setMovementData(prev => ({ ...prev, type: e.target.value }))}
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  <option value="PURCHASE">Compra (Entrada)</option>
+                  <option value="SERVICE_USE">Uso em Servico (Saida)</option>
+                  <option value="SALE">Venda (Saida)</option>
+                  <option value="ADJUSTMENT">Ajuste</option>
+                  <option value="LOSS">Perda (Saida)</option>
+                  <option value="RETURN">Devolucao (Entrada)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Quantidade *</label>
+                <input
+                  type="number"
+                  value={movementData.quantity || ''}
+                  onChange={(e) => setMovementData(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
+                  placeholder="0"
+                  min="1"
+                  required
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {['PURCHASE', 'RETURN'].includes(movementData.type)
+                    ? 'Quantidade a adicionar ao estoque'
+                    : 'Quantidade a remover do estoque'}
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Observacoes</label>
+                <textarea
+                  value={movementData.notes}
+                  onChange={(e) => setMovementData(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Motivo ou detalhes da movimentacao..."
+                  rows={2}
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+              <div className="flex gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={handleCloseModals}
+                  disabled={saving}
+                  className="flex-1 px-4 py-2 border text-muted-foreground rounded-lg hover:bg-muted"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {saving ? 'Salvando...' : 'Registrar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
