@@ -66,6 +66,10 @@ services:
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
       - DATABASE_CONNECTION_URI=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=evolution
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://redis:6379
+      - CACHE_REDIS_PREFIX_KEY=evolution
+      - CACHE_LOCAL_ENABLED=false
       - WEBSOCKET_ENABLED=true
       - LOG_LEVEL=ERROR
       - WEBHOOK_GLOBAL_URL=http://api:3001/api/webhooks/whatsapp
@@ -75,6 +79,8 @@ services:
       - evolution_store:/evolution/store
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - bela360-network
