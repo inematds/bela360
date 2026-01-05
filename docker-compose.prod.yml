@@ -11,6 +11,8 @@ services:
     image: postgres:15-alpine
     container_name: bela360-postgres
     restart: always
+    ports:
+      - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -37,6 +39,8 @@ services:
     image: redis:7-alpine
     container_name: bela360-redis
     restart: always
+    ports:
+      - "127.0.0.1:6379:6379"
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
@@ -59,34 +63,25 @@ services:
     image: atendai/evolution-api:v2.1.1
     container_name: bela360-evolution
     restart: always
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
+    network_mode: host
     environment:
       - SERVER_URL=${EVOLUTION_PUBLIC_URL:-http://localhost:8080}
       - AUTHENTICATION_TYPE=apikey
       - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY}
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=evolution
+      - DATABASE_CONNECTION_URI=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB}?schema=evolution
       - CACHE_REDIS_ENABLED=true
-      - CACHE_REDIS_URI=redis://redis:6379
+      - CACHE_REDIS_URI=redis://localhost:6379
       - CACHE_REDIS_PREFIX_KEY=evolution
       - CACHE_LOCAL_ENABLED=false
       - WEBSOCKET_ENABLED=true
       - LOG_LEVEL=DEBUG
-      - WEBHOOK_GLOBAL_URL=http://api:3001/api/webhooks/whatsapp
+      - WEBHOOK_GLOBAL_URL=http://localhost:3001/api/webhooks/whatsapp
       - WEBHOOK_GLOBAL_ENABLED=true
     volumes:
       - evolution_instances:/evolution/instances
       - evolution_store:/evolution/store
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - bela360-network
     deploy:
       resources:
         limits:
