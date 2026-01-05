@@ -60,7 +60,7 @@ services:
   # Evolution API
   # ===========================================
   evolution-api:
-    image: atendai/evolution-api:v2.2.3
+    image: atendai/evolution-api:v2.3.7
     container_name: bela360-evolution
     restart: always
     network_mode: host
@@ -78,7 +78,7 @@ services:
       - WEBSOCKET_ENABLED=true
       - LOG_LEVEL=ERROR,WARN,DEBUG,INFO,LOG,VERBOSE,DARK,WEBHOOKS,WEBSOCKET
       - LOG_BAILEYS=trace
-      - CONFIG_SESSION_PHONE_VERSION=2.2413.51
+      - CONFIG_SESSION_PHONE_VERSION=2.3000.0
       - WEBHOOK_GLOBAL_URL=http://localhost:3001/api/webhooks/whatsapp
       - WEBHOOK_GLOBAL_ENABLED=true
     volumes:
