@@ -70,6 +70,7 @@ services:
       - net.ipv6.conf.all.disable_ipv6=1
     environment:
       - NODE_OPTIONS=--dns-result-order=ipv4first
+      - DEBUG=baileys:*,evolution:*
       - SERVER_URL=${EVOLUTION_PUBLIC_URL:-http://localhost:8080}
       - AUTHENTICATION_TYPE=apikey
       - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY}
