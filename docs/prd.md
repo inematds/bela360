@@ -21,6 +21,7 @@ O mercado de beleza no Brasil é fragmentado, com milhões de pequenos negócios
 | 2025-01-04 | 0.1 | Versão inicial do PRD | BMad Orchestrator |
 | 2026-01-05 | 0.2 | Adicionados Epics 6-10: Automação de Relacionamento, Lista de Espera, Multi-Profissional, Financeiro Real, Marketing Básico | BMad Orchestrator |
 | 2026-01-05 | 0.3 | Adicionados Epics 11-13: Programa de Fidelidade, Controle de Estoque, Perfil Profissional. Expandido Epic 10 com IA | BMad Orchestrator |
+| 2026-01-07 | 0.4 | Gap Analysis: Adicionadas Stories 2.7, 5.6, 6.1 (NPS), 9.6, 9.7, 10.8, 10.9. Baseado em análise de expertise do setor | BMad Orchestrator |
 
 ---
 
@@ -209,6 +210,9 @@ Módulos principais:
 
 ### Epic 13: Perfil Profissional & Gamificação
 **Goal:** Mini-site público para cada profissional, sistema de avaliações, metas e ranking para motivação da equipe.
+
+### Epic 14: Ecossistema e Marketplace
+**Goal:** Criar um ecossistema completo além do software, com marketplace de produtos, educação, comunidade e white-label para gerar valor contínuo e receita adicional.
 
 ---
 
@@ -410,6 +414,23 @@ Módulos principais:
 4. Filtro por status
 5. Ordenação cronológica
 6. Indicador de próximo agendamento
+
+---
+
+### Story 2.7: Bloqueio Automático de Horários Estratégicos
+
+**As a** business owner,
+**I want** the system to automatically suggest or block low-demand time slots,
+**so that** I can optimize my schedule and reduce idle time.
+
+**Acceptance Criteria:**
+1. Sistema analisa histórico de agendamentos dos últimos 90 dias
+2. Identifica horários com menos de 20% de ocupação média
+3. Sugere bloqueio ou promoção para horários ociosos
+4. Opção de bloqueio automático de horários nunca usados
+5. Relatório de horários ociosos por dia da semana
+6. Notificação semanal com sugestões de otimização
+7. Toggle para ativar/desativar bloqueio automático
 
 ---
 
@@ -636,15 +657,34 @@ Módulos principais:
 
 ---
 
+### Story 5.6: Alertas Proativos de Risco
+
+**As a** business owner,
+**I want** to receive proactive alerts about business risks,
+**so that** I can take corrective action before problems become serious.
+
+**Acceptance Criteria:**
+1. Alerta de queda de faturamento (>15% vs período anterior)
+2. Alerta de aumento de no-shows (>10% do total)
+3. Alerta de profissional improdutivo (ocupação <50% na semana)
+4. Alerta de cliente VIP inativo há 30+ dias
+5. Alerta de servico com demanda em queda
+6. Notificação via WhatsApp e/ou dashboard
+7. Sugestões de ação para cada tipo de alerta
+8. Histórico de alertas com status (resolvido/pendente)
+9. Configuração de thresholds personalizados
+
+---
+
 ## Epic 6: Automação de Relacionamento
 
 **Goal:** Automatizar comunicação pós-atendimento para fidelização - mensagens de agradecimento, retorno, aniversário e reativação de inativos.
 
-### Story 6.1: Mensagem Pós-Atendimento
+### Story 6.1: Mensagem Pós-Atendimento com NPS
 
 **As a** business owner,
-**I want** clients to receive a thank you message after their appointment,
-**so that** they feel valued and are more likely to return.
+**I want** clients to receive a thank you message after their appointment with satisfaction survey,
+**so that** they feel valued and I can measure service quality.
 
 **Acceptance Criteria:**
 1. Mensagem automática enviada 2 horas após horário do agendamento completado
@@ -653,6 +693,12 @@ Módulos principais:
 4. Resposta de avaliação registrada no perfil do cliente
 5. Opção de desativar por cliente específico
 6. Template padrão: "Olá {nome}! Obrigado pela visita hoje. Como foi seu {serviço}? Avalie de 1 a 5 ⭐"
+7. **Pesquisa NPS mensal:** "De 0 a 10, o quanto você indicaria nosso salão?"
+8. Cálculo automático do NPS Score (Promotores - Detratores)
+9. Dashboard de NPS com evolução mensal
+10. Segmentação automática: Promotores (9-10), Neutros (7-8), Detratores (0-6)
+11. Alerta quando NPS cair abaixo de threshold configurado
+12. Follow-up automático para Detratores pedindo feedback
 
 ---
 
@@ -921,6 +967,43 @@ Módulos principais:
 
 ---
 
+### Story 9.6: Alertas de Custos Elevados
+
+**As a** business owner,
+**I want** to receive alerts when costs are unusually high,
+**so that** I can control expenses and maintain profitability.
+
+**Acceptance Criteria:**
+1. Alerta quando custo de produtos excede X% do faturamento
+2. Alerta quando comissões excedem média histórica
+3. Comparativo de custos: mês atual vs meses anteriores
+4. Identificação de profissionais com custo acima da média
+5. Identificação de serviços com margem negativa
+6. Notificação via dashboard e/ou WhatsApp
+7. Sugestões de ação para redução de custos
+8. Relatório mensal de eficiência financeira
+
+---
+
+### Story 9.7: Projeção de Faturamento
+
+**As a** business owner,
+**I want** to see revenue projections,
+**so that** I can plan ahead and set realistic goals.
+
+**Acceptance Criteria:**
+1. Projeção de faturamento para próximos 7, 15 e 30 dias
+2. Baseado em agendamentos confirmados + histórico de conversão
+3. Projeção de comissões a pagar
+4. Cenários: pessimista, realista, otimista
+5. Meta vs projeção com indicador visual
+6. Alerta se projeção estiver abaixo da meta
+7. Sugestões para aumentar faturamento projetado
+8. Comparativo: projeção anterior vs realizado (acurácia)
+9. Gráfico de tendência de faturamento
+
+---
+
 ## Epic 10: Marketing Básico
 
 **Goal:** Ferramentas de marketing com segmentação de clientes e campanhas automáticas baseadas em comportamento.
@@ -1035,6 +1118,46 @@ Módulos principais:
 4. Comissão bônus para clientes captados (configurável)
 5. Relatório de performance de captação
 6. Ranking de profissionais por novos clientes
+
+---
+
+### Story 10.8: Previsão de Demanda com IA
+
+**As a** business owner,
+**I want** the system to predict demand for each time slot,
+**so that** I can optimize staffing and promotions.
+
+**Acceptance Criteria:**
+1. IA analisa histórico de 6+ meses de agendamentos
+2. Previsão de demanda por dia da semana e horário
+3. Previsão de demanda por tipo de serviço
+4. Identificação de tendências (crescimento/queda)
+5. Previsão de faturamento baseada em demanda
+6. Sugestão de horários para promoções
+7. Sugestão de profissionais necessários por período
+8. Alerta de períodos com demanda acima da capacidade
+9. Acurácia da previsão exibida e melhorada com feedback
+10. Exportação de previsões para planejamento
+
+---
+
+### Story 10.9: Recomendação Personalizada de Serviços
+
+**As a** business owner,
+**I want** the system to recommend services to clients,
+**so that** I can increase ticket médio and client satisfaction.
+
+**Acceptance Criteria:**
+1. IA analisa histórico de serviços do cliente
+2. Recomendação de serviços complementares (ex: corte + hidratação)
+3. Recomendação baseada em tempo desde último serviço
+4. Sugestões personalizadas via WhatsApp
+5. Timing inteligente (não enviar após serviço recente)
+6. Opção de incluir desconto na recomendação
+7. Métricas: taxa de conversão de recomendações
+8. A/B testing de mensagens de recomendação
+9. Configuração de quais serviços recomendar para cada perfil
+10. Machine learning para melhorar recomendações com o tempo
 
 ---
 
@@ -1306,6 +1429,103 @@ Módulos principais:
 5. Minhas conquistas/badges
 6. Meus clientes fiéis (top 10)
 7. Agenda da semana
+
+---
+
+## Epic 14: Ecossistema e Marketplace
+
+**Goal:** Criar um ecossistema completo além do software, com marketplace de produtos, educação e comunidade para gerar valor contínuo e receita adicional.
+
+### Story 14.1: Marketplace de Produtos
+
+**As a** business owner,
+**I want** to buy professional products directly through the platform,
+**so that** I can save time and get better prices.
+
+**Acceptance Criteria:**
+1. Catálogo de produtos profissionais de marcas parceiras
+2. Integração com estoque do salão (Epic 12)
+3. Preços especiais para usuários da plataforma
+4. Pedido com entrega rastreada
+5. Histórico de compras
+6. Sugestão de produtos baseada em consumo
+7. Avaliações de produtos por outros salões
+8. Parcelamento e múltiplas formas de pagamento
+9. Comissão para Bela360 por venda (modelo de negócio)
+
+---
+
+### Story 14.2: Cursos e Treinamentos
+
+**As a** professional,
+**I want** to access training courses,
+**so that** I can improve my skills and services.
+
+**Acceptance Criteria:**
+1. Biblioteca de cursos em vídeo
+2. Categorias: técnicas, gestão, atendimento, marketing
+3. Cursos gratuitos e pagos
+4. Certificados de conclusão
+5. Progresso salvo por profissional
+6. Cursos recomendados baseado em avaliações recebidas
+7. Parceria com academias e escolas de beleza
+8. Integração com badges/conquistas (Epic 13)
+9. Desconto em cursos para assinantes premium
+
+---
+
+### Story 14.3: Comunidade de Profissionais
+
+**As a** professional,
+**I want** to connect with other beauty professionals,
+**so that** I can learn, share and grow my network.
+
+**Acceptance Criteria:**
+1. Fórum de discussão por categoria
+2. Grupos regionais
+3. Perguntas e respostas moderadas
+4. Compartilhamento de trabalhos (portfólio)
+5. Eventos e encontros presenciais
+6. Mentoria entre profissionais
+7. Ranking de contribuição na comunidade
+8. Ofertas de emprego e parcerias
+9. Lives e webinars com especialistas
+
+---
+
+### Story 14.4: Parcerias com Marcas
+
+**As a** business owner,
+**I want** access to exclusive brand partnerships,
+**so that** I can offer better products and get perks.
+
+**Acceptance Criteria:**
+1. Programa de parceria com marcas de beleza
+2. Descontos exclusivos para salões parceiros
+3. Amostras e lançamentos antecipados
+4. Material de marketing das marcas
+5. Treinamentos patrocinados
+6. Certificações de marca
+7. Selo de "Salão Parceiro [Marca]"
+8. Comissão por indicação de outros salões
+
+---
+
+### Story 14.5: White Label Premium
+
+**As a** business owner,
+**I want** to have my own branded app,
+**so that** my salon looks professional and clients book directly with me.
+
+**Acceptance Criteria:**
+1. App PWA com marca do salão (logo, cores)
+2. URL personalizada (meusalao.bela360.com)
+3. Remoção da marca Bela360 (opcional premium)
+4. Push notifications com marca do salão
+5. QR Code personalizado para clientes
+6. Página de download do app
+7. Configuração de temas e cores
+8. Disponível apenas para planos Business+
 
 ---
 
