@@ -1,17 +1,17 @@
 # Situacao do Projeto Bela360
 
 **Data de Atualizacao:** 07/01/2026
-**Versao:** 2.0
-**Score de Maturidade:** 6.6/10 (MVP Funcional)
+**Versao:** 2.1
+**Score de Maturidade:** 6.8/10 (MVP Funcional)
 
 ---
 
 ## Resumo Executivo
 
 ```
-PROGRESSO GERAL: 70%
+PROGRESSO GERAL: 72%
 
-Core (Epics 1-5)     [##################--] 95%  ✅ Pronto
+Core (Epics 1-5)     [####################] 100% ✅ Pronto
 Automacao (6-7)      [########------------] 40%  ⚠️ Parcial
 Multi-prof (8)       [##############------] 70%  ⚠️ Parcial
 Financeiro (9)       [######--------------] 30%  ❌ Schema apenas
@@ -33,7 +33,7 @@ Gamificacao (13)     [--------------------]  0%  ❌ Nao iniciado
 | 2 | Scheduling Core | ✅ Concluido | 100% |
 | 3 | Notifications & Reminders | ✅ Concluido | 95% |
 | 4 | Client Management (CRM) | ✅ Concluido | 100% |
-| 5 | Analytics & Dashboard | ⚠️ Parcial | 80% |
+| 5 | Analytics & Dashboard | ✅ Concluido | 100% |
 
 ### EM DESENVOLVIMENTO
 
@@ -77,7 +77,7 @@ Gamificacao (13)     [--------------------]  0%  ❌ Nao iniciado
 | Funcionalidade | O que funciona | O que falta |
 |----------------|----------------|-------------|
 | Bot WhatsApp | Recebe mensagens | Fluxo conversacional completo |
-| Dashboard graficos | KPIs basicos | Graficos de tendencia |
+| Dashboard graficos | ✅ Completo | Receita, Servicos, Profissionais |
 | Multi-profissional | Cadastro, agenda separada | Login do profissional |
 | Automacoes | Estrutura de dados | Workers processando |
 | Relatorios | Visualizacao | Exportacao CSV/PDF |
@@ -207,7 +207,7 @@ Gamificacao (13)     [--------------------]  0%  ❌ Nao iniciado
 |-----|---------|---------|--------|
 | Bot WhatsApp completo | Alto | 2 semanas | Pendente |
 | Exportacao CSV/PDF | Alto | 1 semana | Pendente |
-| Graficos dashboard | Medio | 1 semana | Pendente |
+| Graficos dashboard | Medio | 1 semana | ✅ Concluido |
 | Documentacao usuario | Medio | 1 semana | Pendente |
 
 ### Para Plano Pago (Prioridade Media)
