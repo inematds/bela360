@@ -1,6 +1,8 @@
 import { app } from './app';
 import { env, logger, connectDatabase, connectRedis } from './config';
 import { initAutomationWorkers } from './modules/automation';
+import { initWaitlistWorkers } from './modules/waitlist';
+import { initMarketingWorkers } from './modules/marketing';
 
 const PORT = env.PORT;
 
@@ -14,9 +16,11 @@ async function bootstrap(): Promise<void> {
     // Connect to Redis
     await connectRedis();
 
-    // Initialize automation workers
+    // Initialize all workers
     initAutomationWorkers();
-    logger.info('✅ Automation workers initialized');
+    initWaitlistWorkers();
+    initMarketingWorkers();
+    logger.info('✅ All workers initialized (automation, waitlist, marketing)');
 
     // Start server
     app.listen(PORT, () => {

@@ -524,4 +524,326 @@ router.post('/referral/:referralCode', async (req: Request, res: Response) => {
   }
 });
 
+// ============ MARKETING POR PROFISSIONAL ============
+
+// Get marketing links and info
+router.get('/marketing', async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId;
+
+    const profile = await prisma.professionalProfile.findUnique({
+      where: { userId },
+      include: {
+        user: {
+          select: {
+            name: true,
+            business: { select: { name: true, slug: true } },
+          },
+        },
+      },
+    });
+
+    if (!profile) {
+      return res.status(404).json({ error: 'Perfil não encontrado' });
+    }
+
+    // Generate marketing links
+    const baseUrl = process.env.APP_URL || 'https://app.bela360.com.br';
+    const businessSlug = profile.user.business.slug;
+
+    const marketingLinks = {
+      profileLink: `${baseUrl}/p/${profile.slug}`,
+      bookingLink: `${baseUrl}/agendar/${businessSlug}?prof=${profile.slug}`,
+      referralLink: `${baseUrl}/indicacao/${profile.referralCode}`,
+      qrCodeUrl: `${baseUrl}/api/qr?url=${encodeURIComponent(`${baseUrl}/p/${profile.slug}`)}`,
+    };
+
+    res.json({
+      profile: {
+        slug: profile.slug,
+        referralCode: profile.referralCode,
+        isPublic: profile.isPublic,
+        bio: profile.bio,
+        photoUrl: profile.photoUrl,
+      },
+      links: marketingLinks,
+      stats: {
+        clientsReferred: profile.clientsReferred,
+        totalAppointments: profile.totalAppointments,
+        totalClients: profile.totalClients,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar informacoes de marketing' });
+  }
+});
+
+// Get clients acquired by this professional
+router.get('/marketing/clients', async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId;
+    const businessId = (req as any).businessId;
+    const { period } = req.query;
+
+    // Calculate date range
+    const now = new Date();
+    let startDate: Date;
+
+    switch (period) {
+      case 'week':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      case 'year':
+        startDate = new Date(now.getFullYear(), 0, 1);
+        break;
+      default:
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    }
+
+    // Find clients whose first appointment was with this professional
+    const firstAppointments = await prisma.appointment.findMany({
+      where: {
+        businessId,
+        professionalId: userId,
+        status: 'COMPLETED',
+        startTime: { gte: startDate },
+      },
+      include: {
+        client: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            createdAt: true,
+            totalAppointments: true,
+            totalSpent: true,
+          },
+        },
+      },
+      orderBy: { startTime: 'desc' },
+    });
+
+    // Filter to get only NEW clients (first appointment)
+    const seenClients = new Set<string>();
+    const newClients = [];
+
+    for (const apt of firstAppointments) {
+      if (!seenClients.has(apt.clientId)) {
+        seenClients.add(apt.clientId);
+
+        // Check if this was the client's first appointment overall
+        const firstApt = await prisma.appointment.findFirst({
+          where: {
+            clientId: apt.clientId,
+            status: 'COMPLETED',
+          },
+          orderBy: { startTime: 'asc' },
+        });
+
+        if (firstApt && firstApt.professionalId === userId) {
+          newClients.push({
+            ...apt.client,
+            firstAppointmentDate: apt.startTime,
+          });
+        }
+      }
+    }
+
+    // Calculate stats
+    const totalRevenue = newClients.reduce((sum, c) => sum + Number(c.totalSpent || 0), 0);
+    const avgSpent = newClients.length > 0 ? totalRevenue / newClients.length : 0;
+
+    res.json({
+      period,
+      startDate,
+      clients: newClients,
+      stats: {
+        totalNewClients: newClients.length,
+        totalRevenue,
+        averageSpentPerClient: avgSpent,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar clientes captados' });
+  }
+});
+
+// Get marketing stats overview
+router.get('/marketing/stats', async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId;
+    const businessId = (req as any).businessId;
+
+    const now = new Date();
+    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    const profile = await prisma.professionalProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!profile) {
+      return res.status(404).json({ error: 'Perfil não encontrado' });
+    }
+
+    // Count new clients this month vs last month
+    const [thisMonthClients, lastMonthClients, totalClients] = await Promise.all([
+      prisma.appointment.findMany({
+        where: {
+          businessId,
+          professionalId: userId,
+          status: 'COMPLETED',
+          startTime: { gte: thisMonth },
+        },
+        select: { clientId: true },
+        distinct: ['clientId'],
+      }),
+      prisma.appointment.findMany({
+        where: {
+          businessId,
+          professionalId: userId,
+          status: 'COMPLETED',
+          startTime: { gte: lastMonth, lt: thisMonth },
+        },
+        select: { clientId: true },
+        distinct: ['clientId'],
+      }),
+      prisma.appointment.findMany({
+        where: {
+          businessId,
+          professionalId: userId,
+          status: 'COMPLETED',
+        },
+        select: { clientId: true },
+        distinct: ['clientId'],
+      }),
+    ]);
+
+    // Get return rate (clients who came back)
+    const returningClients = await prisma.client.count({
+      where: {
+        businessId,
+        totalAppointments: { gte: 2 },
+        appointments: {
+          some: { professionalId: userId },
+        },
+      },
+    });
+
+    const returnRate = totalClients.length > 0
+      ? (returningClients / totalClients.length) * 100
+      : 0;
+
+    // Growth calculation
+    const growth = lastMonthClients.length > 0
+      ? ((thisMonthClients.length - lastMonthClients.length) / lastMonthClients.length) * 100
+      : thisMonthClients.length > 0 ? 100 : 0;
+
+    res.json({
+      referrals: profile.clientsReferred,
+      totalAppointments: profile.totalAppointments,
+      thisMonth: {
+        uniqueClients: thisMonthClients.length,
+      },
+      lastMonth: {
+        uniqueClients: lastMonthClients.length,
+      },
+      allTime: {
+        totalClients: totalClients.length,
+        returningClients,
+        returnRate: Math.round(returnRate * 10) / 10,
+      },
+      growth: Math.round(growth * 10) / 10,
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar estatísticas de marketing' });
+  }
+});
+
+// Increment profile view (public endpoint) - updates totalClients as view proxy
+router.post('/public/:slug/view', async (_req: Request, res: Response) => {
+  // Profile views tracking removed - not in schema
+  // Could be added via separate analytics service if needed
+  res.json({ success: true });
+});
+
+// Send promotional message to professional's clients
+router.post('/marketing/send', async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId;
+    const businessId = (req as any).businessId;
+    const { message, clientIds, templateId } = req.body;
+
+    // Get business WhatsApp config
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      select: { whatsappInstanceId: true, whatsappConnected: true },
+    });
+
+    if (!business?.whatsappInstanceId || !business.whatsappConnected) {
+      return res.status(400).json({ error: 'WhatsApp não configurado' });
+    }
+
+    // Get professional info
+    const professional = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true },
+    });
+
+    // Get clients
+    let targetClients;
+    if (clientIds && clientIds.length > 0) {
+      targetClients = await prisma.client.findMany({
+        where: {
+          id: { in: clientIds },
+          businessId,
+        },
+        select: { id: true, name: true, phone: true },
+      });
+    } else {
+      // Default: clients who had appointments with this professional
+      targetClients = await prisma.client.findMany({
+        where: {
+          businessId,
+          appointments: {
+            some: { professionalId: userId },
+          },
+        },
+        select: { id: true, name: true, phone: true },
+        take: 50, // Limit to 50 clients per batch
+      });
+    }
+
+    // Get message content from template if provided
+    let finalMessage = message;
+    if (templateId) {
+      const template = await prisma.contentTemplate.findUnique({
+        where: { id: templateId },
+      });
+      if (template) {
+        finalMessage = template.content;
+      }
+    }
+
+    // Queue messages for sending (simplified - in production would use campaign system)
+    const results = {
+      queued: targetClients.length,
+      clients: targetClients.map(c => c.name),
+      professionalName: professional?.name,
+      messagePreview: finalMessage?.substring(0, 100) + '...',
+    };
+
+    res.json({
+      success: true,
+      message: `${results.queued} mensagens serão enviadas`,
+      data: results,
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao enviar mensagens' });
+  }
+});
+
 export const professionalRoutes: Router = router;

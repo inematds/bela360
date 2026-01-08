@@ -1,7 +1,19 @@
 import { z } from 'zod';
-import { prisma, logger } from '../../config';
+import { Queue } from 'bullmq';
+import { prisma, logger, bullmqConnection } from '../../config';
 import { AppError } from '../../common/errors';
 import { CampaignStatus, ClientSegmentType } from '@prisma/client';
+
+// Campaign message queue - same as in marketing.worker.ts
+const campaignMessageQueue = new Queue('campaign-message', {
+  connection: bullmqConnection,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: { type: 'exponential', delay: 3000 },
+    removeOnComplete: 500,
+    removeOnFail: 1000,
+  },
+});
 
 // Validation schemas
 const createCampaignSchema = z.object({
@@ -263,6 +275,7 @@ export class MarketingService {
       throw new AppError('Campanha já foi iniciada', 400);
     }
 
+    // Update campaign status to SENDING
     await prisma.campaign.update({
       where: { id },
       data: {
@@ -271,8 +284,33 @@ export class MarketingService {
       },
     });
 
-    // TODO: Queue campaign messages for sending
-    logger.info({ campaignId: id }, 'Campaign started');
+    // Get all recipients that haven't been sent
+    const recipients = await prisma.campaignRecipient.findMany({
+      where: {
+        campaignId: id,
+        sentAt: null,
+        failed: false,
+      },
+      select: { id: true },
+    });
+
+    // Queue each recipient message with delay between batches
+    for (let i = 0; i < recipients.length; i++) {
+      const recipient = recipients[i];
+      const delay = Math.floor(i / 20) * 60000; // 1 minute delay every 20 messages
+
+      await campaignMessageQueue.add(
+        `campaign-${id}-${recipient.id}`,
+        {
+          campaignId: id,
+          recipientId: recipient.id,
+          businessId,
+        },
+        { delay }
+      );
+    }
+
+    logger.info({ campaignId: id, recipientCount: recipients.length }, 'Campaign started and messages queued');
 
     return this.getCampaignById(businessId, id);
   }
