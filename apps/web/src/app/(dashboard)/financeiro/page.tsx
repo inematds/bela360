@@ -12,6 +12,8 @@ import {
   ArrowUpRight,
   ArrowDownRight,
 } from 'lucide-react';
+import { ExportButton } from '@/components/ExportButton';
+import { exportData, ExportFormat } from '@/lib/export';
 
 interface FinancialSummary {
   totalRevenue: number;
@@ -138,8 +140,42 @@ export default function FinanceiroPage() {
     alert('Caixa fechado com sucesso! Relatorio gerado.');
   };
 
-  const handleExportReport = () => {
-    alert('Relatorio exportado com sucesso!');
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportReport = (format: ExportFormat) => {
+    setExporting(true);
+    try {
+      const periodLabel = {
+        today: 'Hoje',
+        week: 'Esta Semana',
+        month: 'Este Mês',
+        year: 'Este Ano',
+      }[period] || period;
+
+      const data = {
+        headers: ['Categoria', 'Métrica', 'Valor'],
+        rows: [
+          ['Resumo', 'Receita Total', formatCurrency(summary?.totalRevenue || 0)],
+          ['Resumo', 'Comissões', formatCurrency(summary?.totalCommissions || 0)],
+          ['Resumo', 'Lucro do Salão', formatCurrency(summary?.businessProfit || 0)],
+          ['Resumo', 'Transações', summary?.transactionCount || 0],
+          ['Resumo', 'Ticket Médio', formatCurrency(summary?.averageTicket || 0)],
+          ...byMethod.map(m => [
+            'Forma de Pagamento',
+            methodLabels[m.method] || m.method,
+            `${formatCurrency(m.total)} (${m.count} transações)`,
+          ]),
+        ],
+      };
+
+      exportData(data, format, {
+        filename: `financeiro-${period}-${new Date().toISOString().split('T')[0]}`,
+        title: 'Relatório Financeiro',
+        subtitle: `Período: ${periodLabel}`,
+      });
+    } finally {
+      setExporting(false);
+    }
   };
 
   if (loading) {
@@ -174,6 +210,7 @@ export default function FinanceiroPage() {
             <option value="month">Este Mês</option>
             <option value="year">Este Ano</option>
           </select>
+          <ExportButton onExport={handleExportReport} loading={exporting} />
         </div>
       </div>
 
@@ -311,7 +348,7 @@ export default function FinanceiroPage() {
             </button>
 
             <button
-              onClick={handleExportReport}
+              onClick={() => handleExportReport('xlsx')}
               className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors text-left"
             >
               <div className="p-2 bg-orange-100 rounded-lg">
@@ -319,7 +356,7 @@ export default function FinanceiroPage() {
               </div>
               <div>
                 <p className="font-medium">Relatório Completo</p>
-                <p className="text-sm text-muted-foreground">Exportar dados</p>
+                <p className="text-sm text-muted-foreground">Exportar Excel</p>
               </div>
             </button>
           </div>

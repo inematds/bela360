@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { ExportButton } from '@/components/ExportButton';
+import { exportData, ExportFormat } from '@/lib/export';
 
 interface Service {
   id: string;
@@ -38,10 +40,36 @@ export default function ServicosPage() {
     professionals: [] as string[],
   });
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const filteredServices = services.filter(
     service => showInactive || service.active
   );
+
+  const handleExport = (format: ExportFormat) => {
+    setExporting(true);
+    try {
+      const data = {
+        headers: ['Nome', 'Descrição', 'Duração', 'Preço', 'Profissionais', 'Status'],
+        rows: filteredServices.map(s => [
+          s.name,
+          s.description || '-',
+          formatDuration(s.duration),
+          formatCurrency(s.price),
+          s.professionals.join(', '),
+          s.active ? 'Ativo' : 'Inativo',
+        ]),
+      };
+
+      exportData(data, format, {
+        filename: `servicos-${new Date().toISOString().split('T')[0]}`,
+        title: 'Lista de Serviços',
+        subtitle: `${filteredServices.length} serviços`,
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const formatDuration = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
@@ -151,6 +179,7 @@ export default function ServicosPage() {
             />
             Mostrar inativos
           </label>
+          <ExportButton onExport={handleExport} loading={exporting} />
           <button
             onClick={() => setShowNewModal(true)}
             className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"

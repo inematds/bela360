@@ -13,6 +13,8 @@ import {
   Clock,
   Boxes,
 } from 'lucide-react';
+import { ExportButton } from '@/components/ExportButton';
+import { exportData, ExportFormat } from '@/lib/export';
 
 interface Product {
   id: string;
@@ -70,6 +72,35 @@ export default function EstoquePage() {
     notes: '',
   });
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = (format: ExportFormat) => {
+    setExporting(true);
+    try {
+      const data = {
+        headers: ['Nome', 'Marca', 'SKU', 'Categoria', 'Estoque Atual', 'Estoque Mínimo', 'Preço Custo', 'Unidade', 'Status'],
+        rows: filteredProducts.map(p => [
+          p.name,
+          p.brand,
+          p.sku,
+          categoryLabels[p.category] || p.category,
+          p.currentStock,
+          p.minStock,
+          formatCurrency(p.costPrice),
+          p.unit,
+          isLowStock(p) ? 'Baixo' : 'OK',
+        ]),
+      };
+
+      exportData(data, format, {
+        filename: `estoque-${new Date().toISOString().split('T')[0]}`,
+        title: 'Controle de Estoque',
+        subtitle: `${filteredProducts.length} produtos`,
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   useEffect(() => {
     // Simulated data - replace with API call
@@ -231,13 +262,16 @@ export default function EstoquePage() {
           </p>
         </div>
 
-        <button
-          onClick={() => setShowNewModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
-        >
-          <Plus className="h-4 w-4" />
-          Novo Produto
-        </button>
+        <div className="flex gap-2">
+          <ExportButton onExport={handleExport} loading={exporting} />
+          <button
+            onClick={() => setShowNewModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+          >
+            <Plus className="h-4 w-4" />
+            Novo Produto
+          </button>
+        </div>
       </div>
 
       {/* Stats */}

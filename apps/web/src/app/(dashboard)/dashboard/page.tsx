@@ -24,6 +24,16 @@ import {
   ServiceReport,
   ProfessionalReport,
 } from '@/lib/api';
+import { ExportButton, SimpleExportButton } from '@/components/ExportButton';
+import {
+  exportData,
+  ExportFormat,
+  prepareDashboardExport,
+  prepareRevenueExport,
+  prepareServiceExport,
+  prepareProfessionalExport,
+  prepareAppointmentExport,
+} from '@/lib/export';
 
 interface TodayAppointment {
   id: string;
@@ -127,10 +137,12 @@ function ChartCard({
   title,
   children,
   loading,
+  actions,
 }: {
   title: string;
   children: React.ReactNode;
   loading?: boolean;
+  actions?: React.ReactNode;
 }) {
   if (loading) {
     return (
@@ -143,7 +155,10 @@ function ChartCard({
 
   return (
     <div className="rounded-lg border bg-card shadow-sm p-6">
-      <h3 className="text-lg font-semibold mb-4">{title}</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold">{title}</h3>
+        {actions}
+      </div>
       {children}
     </div>
   );
@@ -285,13 +300,67 @@ export default function DashboardPage() {
     );
   }
 
+  // Export handlers
+  const handleExportDashboard = (format: ExportFormat) => {
+    if (!stats) return;
+    const data = prepareDashboardExport(stats);
+    exportData(data, format, {
+      filename: `dashboard-${new Date().toISOString().split('T')[0]}`,
+      title: 'Dashboard Bela360',
+      subtitle: 'Resumo de métricas do negócio',
+    });
+  };
+
+  const handleExportRevenue = (format: ExportFormat) => {
+    if (!revenueData?.daily) return;
+    const data = prepareRevenueExport(revenueData.daily);
+    exportData(data, format, {
+      filename: `receita-${new Date().toISOString().split('T')[0]}`,
+      title: 'Relatório de Receita',
+      subtitle: 'Últimos 7 dias',
+    });
+  };
+
+  const handleExportServices = (format: ExportFormat) => {
+    if (!serviceData) return;
+    const data = prepareServiceExport(serviceData);
+    exportData(data, format, {
+      filename: `servicos-${new Date().toISOString().split('T')[0]}`,
+      title: 'Relatório de Serviços',
+      subtitle: 'Serviços mais populares do mês',
+    });
+  };
+
+  const handleExportProfessionals = (format: ExportFormat) => {
+    if (!professionalData) return;
+    const data = prepareProfessionalExport(professionalData);
+    exportData(data, format, {
+      filename: `profissionais-${new Date().toISOString().split('T')[0]}`,
+      title: 'Desempenho por Profissional',
+      subtitle: 'Métricas do mês atual',
+    });
+  };
+
+  const handleExportAppointments = (format: ExportFormat) => {
+    if (!todayAppointments.length) return;
+    const data = prepareAppointmentExport(todayAppointments);
+    exportData(data, format, {
+      filename: `agendamentos-hoje-${new Date().toISOString().split('T')[0]}`,
+      title: 'Agendamentos de Hoje',
+      subtitle: new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
+    });
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Bem-vindo ao bela360. Aqui está o resumo do seu dia.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Bem-vindo ao bela360. Aqui está o resumo do seu dia.
+          </p>
+        </div>
+        <ExportButton onExport={handleExportDashboard} disabled={loading || !stats} />
       </div>
 
       {/* Stats Grid */}
@@ -323,7 +392,15 @@ export default function DashboardPage() {
       {/* Charts Grid */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Revenue Line Chart */}
-        <ChartCard title="Receita dos Últimos 7 Dias" loading={loading}>
+        <ChartCard
+          title="Receita dos Últimos 7 Dias"
+          loading={loading}
+          actions={
+            revenueChartData.length > 0 && (
+              <SimpleExportButton format="xlsx" label="Excel" onExport={handleExportRevenue} />
+            )
+          }
+        >
           {revenueChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={revenueChartData}>
@@ -357,7 +434,15 @@ export default function DashboardPage() {
         </ChartCard>
 
         {/* Services Pie Chart */}
-        <ChartCard title="Serviços Mais Populares (Mês)" loading={loading}>
+        <ChartCard
+          title="Serviços Mais Populares (Mês)"
+          loading={loading}
+          actions={
+            serviceChartData.length > 0 && (
+              <SimpleExportButton format="xlsx" label="Excel" onExport={handleExportServices} />
+            )
+          }
+        >
           {serviceChartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
@@ -394,7 +479,15 @@ export default function DashboardPage() {
       </div>
 
       {/* Professional Performance Bar Chart */}
-      <ChartCard title="Desempenho por Profissional (Mês)" loading={loading}>
+      <ChartCard
+        title="Desempenho por Profissional (Mês)"
+        loading={loading}
+        actions={
+          professionalChartData.length > 0 && (
+            <SimpleExportButton format="xlsx" label="Excel" onExport={handleExportProfessionals} />
+          )
+        }
+      >
         {professionalChartData.length > 0 ? (
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={professionalChartData} layout="vertical">
@@ -420,8 +513,11 @@ export default function DashboardPage() {
 
       {/* Upcoming Appointments */}
       <div className="rounded-lg border bg-card shadow-sm">
-        <div className="border-b px-6 py-4">
+        <div className="flex items-center justify-between border-b px-6 py-4">
           <h2 className="text-lg font-semibold">Próximos Agendamentos de Hoje</h2>
+          {todayAppointments.length > 0 && (
+            <SimpleExportButton format="xlsx" label="Excel" onExport={handleExportAppointments} />
+          )}
         </div>
         {loading ? (
           <div className="divide-y">

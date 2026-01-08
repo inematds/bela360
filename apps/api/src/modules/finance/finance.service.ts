@@ -1,8 +1,23 @@
 import { z } from 'zod';
-import { Prisma } from '@prisma/client';
+import { Prisma, CommissionPayoutStatus } from '@prisma/client';
 import { prisma, logger } from '../../config';
 import { AppError } from '../../common/errors';
 import { PaymentMethod, PaymentStatus } from '@prisma/client';
+
+// Commission payout schemas
+const createPayoutSchema = z.object({
+  professionalId: z.string().cuid(),
+  paymentIds: z.array(z.string().cuid()).min(1),
+  paymentMethod: z.string().optional(),
+  reference: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+const markPayoutPaidSchema = z.object({
+  paymentMethod: z.string().optional(),
+  reference: z.string().optional(),
+  notes: z.string().optional(),
+});
 
 // Validation schemas
 const createPaymentSchema = z.object({
@@ -515,21 +530,16 @@ export class FinanceService {
    * Get pending commissions (not yet paid out)
    */
   async getPendingCommissions(businessId: string) {
-    // For simplicity, we assume all commissions are pending until manually marked
-    // In a real app, you'd have a CommissionPayout model
-    const lastMonthStart = new Date();
-    lastMonthStart.setMonth(lastMonthStart.getMonth() - 1);
-    lastMonthStart.setDate(1);
-    lastMonthStart.setHours(0, 0, 0, 0);
-
+    // Get payments that haven't been included in a payout
     const payments = await prisma.payment.groupBy({
       by: ['professionalId'],
       where: {
         businessId,
-        paidAt: { gte: lastMonthStart },
         status: PaymentStatus.COMPLETED,
+        commissionPayoutId: null, // Not yet paid out
       },
       _sum: { commissionAmount: true },
+      _count: true,
     });
 
     const professionalIds = payments.map(p => p.professionalId);
@@ -541,7 +551,293 @@ export class FinanceService {
     return payments.map(p => ({
       professional: professionals.find(prof => prof.id === p.professionalId),
       pendingAmount: Number(p._sum.commissionAmount || 0),
+      paymentCount: p._count,
     }));
+  }
+
+  /**
+   * Get pending payments for a professional (not yet paid out)
+   */
+  async getPendingPaymentsForProfessional(businessId: string, professionalId: string) {
+    return prisma.payment.findMany({
+      where: {
+        businessId,
+        professionalId,
+        status: PaymentStatus.COMPLETED,
+        commissionPayoutId: null,
+      },
+      include: {
+        client: { select: { id: true, name: true } },
+        appointment: {
+          select: {
+            startTime: true,
+            service: { select: { id: true, name: true } },
+          },
+        },
+      },
+      orderBy: { paidAt: 'desc' },
+    });
+  }
+
+  /**
+   * Create a commission payout
+   */
+  async createCommissionPayout(businessId: string, _userId: string, data: z.infer<typeof createPayoutSchema>) {
+    const validated = createPayoutSchema.parse(data);
+
+    // Verify all payments belong to this professional and business
+    const payments = await prisma.payment.findMany({
+      where: {
+        id: { in: validated.paymentIds },
+        businessId,
+        professionalId: validated.professionalId,
+        status: PaymentStatus.COMPLETED,
+        commissionPayoutId: null,
+      },
+    });
+
+    if (payments.length !== validated.paymentIds.length) {
+      throw new AppError('Um ou mais pagamentos não são válidos para este repasse', 400);
+    }
+
+    const totalAmount = payments.reduce((sum, p) => sum + Number(p.commissionAmount), 0);
+    const dates = payments.map(p => p.paidAt);
+    const periodStart = new Date(Math.min(...dates.map(d => d.getTime())));
+    const periodEnd = new Date(Math.max(...dates.map(d => d.getTime())));
+
+    // Create payout and update payments in a transaction
+    const payout = await prisma.$transaction(async (tx) => {
+      const newPayout = await tx.commissionPayout.create({
+        data: {
+          businessId,
+          professionalId: validated.professionalId,
+          totalAmount,
+          paymentCount: payments.length,
+          periodStart,
+          periodEnd,
+          paymentMethod: validated.paymentMethod,
+          reference: validated.reference,
+          notes: validated.notes,
+          status: CommissionPayoutStatus.PENDING,
+        },
+        include: {
+          professional: { select: { id: true, name: true } },
+        },
+      });
+
+      // Link payments to this payout
+      await tx.payment.updateMany({
+        where: { id: { in: validated.paymentIds } },
+        data: { commissionPayoutId: newPayout.id },
+      });
+
+      return newPayout;
+    });
+
+    logger.info({ payoutId: payout.id, professionalId: validated.professionalId, amount: totalAmount }, 'Commission payout created');
+    return payout;
+  }
+
+  /**
+   * Mark a commission payout as paid
+   */
+  async markPayoutAsPaid(businessId: string, userId: string, payoutId: string, data?: z.infer<typeof markPayoutPaidSchema>) {
+    const validated = data ? markPayoutPaidSchema.parse(data) : {};
+
+    const payout = await prisma.commissionPayout.findFirst({
+      where: { id: payoutId, businessId },
+    });
+
+    if (!payout) {
+      throw new AppError('Repasse não encontrado', 404);
+    }
+
+    if (payout.status === CommissionPayoutStatus.PAID) {
+      throw new AppError('Este repasse já foi pago', 409);
+    }
+
+    if (payout.status === CommissionPayoutStatus.CANCELLED) {
+      throw new AppError('Este repasse foi cancelado', 409);
+    }
+
+    const updatedPayout = await prisma.commissionPayout.update({
+      where: { id: payoutId },
+      data: {
+        status: CommissionPayoutStatus.PAID,
+        paidAt: new Date(),
+        processedById: userId,
+        paymentMethod: validated.paymentMethod || payout.paymentMethod,
+        reference: validated.reference || payout.reference,
+        notes: validated.notes || payout.notes,
+      },
+      include: {
+        professional: { select: { id: true, name: true } },
+      },
+    });
+
+    logger.info({ payoutId, amount: payout.totalAmount }, 'Commission payout marked as paid');
+    return updatedPayout;
+  }
+
+  /**
+   * Cancel a commission payout (returns payments to pending)
+   */
+  async cancelCommissionPayout(businessId: string, payoutId: string) {
+    const payout = await prisma.commissionPayout.findFirst({
+      where: { id: payoutId, businessId },
+    });
+
+    if (!payout) {
+      throw new AppError('Repasse não encontrado', 404);
+    }
+
+    if (payout.status === CommissionPayoutStatus.PAID) {
+      throw new AppError('Não é possível cancelar um repasse já pago', 409);
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // Unlink payments from this payout
+      await tx.payment.updateMany({
+        where: { commissionPayoutId: payoutId },
+        data: { commissionPayoutId: null },
+      });
+
+      // Cancel the payout
+      await tx.commissionPayout.update({
+        where: { id: payoutId },
+        data: { status: CommissionPayoutStatus.CANCELLED },
+      });
+    });
+
+    logger.info({ payoutId }, 'Commission payout cancelled');
+    return { success: true };
+  }
+
+  /**
+   * Get commission payouts for business
+   */
+  async getCommissionPayouts(businessId: string, filters?: {
+    professionalId?: string;
+    status?: CommissionPayoutStatus;
+    startDate?: Date;
+    endDate?: Date;
+  }) {
+    const where: any = { businessId };
+
+    if (filters?.professionalId) where.professionalId = filters.professionalId;
+    if (filters?.status) where.status = filters.status;
+    if (filters?.startDate || filters?.endDate) {
+      where.createdAt = {};
+      if (filters.startDate) where.createdAt.gte = filters.startDate;
+      if (filters.endDate) where.createdAt.lte = filters.endDate;
+    }
+
+    return prisma.commissionPayout.findMany({
+      where,
+      include: {
+        professional: { select: { id: true, name: true } },
+        processedBy: { select: { id: true, name: true } },
+        _count: { select: { payments: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /**
+   * Get a single payout with details
+   */
+  async getCommissionPayoutDetails(businessId: string, payoutId: string) {
+    const payout = await prisma.commissionPayout.findFirst({
+      where: { id: payoutId, businessId },
+      include: {
+        professional: { select: { id: true, name: true } },
+        processedBy: { select: { id: true, name: true } },
+        payments: {
+          include: {
+            client: { select: { id: true, name: true } },
+            appointment: {
+              select: {
+                startTime: true,
+                service: { select: { id: true, name: true } },
+              },
+            },
+          },
+          orderBy: { paidAt: 'desc' },
+        },
+      },
+    });
+
+    if (!payout) {
+      throw new AppError('Repasse não encontrado', 404);
+    }
+
+    return payout;
+  }
+
+  /**
+   * Get commission summary for a professional
+   */
+  async getProfessionalCommissionSummary(businessId: string, professionalId: string, startDate?: Date, endDate?: Date) {
+    const dateFilter: any = {};
+    if (startDate) dateFilter.gte = startDate;
+    if (endDate) dateFilter.lte = endDate;
+
+    // Get pending (unpaid) commissions
+    const pendingPayments = await prisma.payment.aggregate({
+      where: {
+        businessId,
+        professionalId,
+        status: PaymentStatus.COMPLETED,
+        commissionPayoutId: null,
+        ...(Object.keys(dateFilter).length ? { paidAt: dateFilter } : {}),
+      },
+      _sum: { commissionAmount: true, finalAmount: true },
+      _count: true,
+    });
+
+    // Get paid commissions
+    const paidPayouts = await prisma.commissionPayout.aggregate({
+      where: {
+        businessId,
+        professionalId,
+        status: CommissionPayoutStatus.PAID,
+        ...(Object.keys(dateFilter).length ? { paidAt: dateFilter } : {}),
+      },
+      _sum: { totalAmount: true },
+      _count: true,
+    });
+
+    // Get pending payouts (created but not yet paid)
+    const pendingPayouts = await prisma.commissionPayout.aggregate({
+      where: {
+        businessId,
+        professionalId,
+        status: CommissionPayoutStatus.PENDING,
+      },
+      _sum: { totalAmount: true },
+      _count: true,
+    });
+
+    return {
+      pending: {
+        amount: Number(pendingPayments._sum.commissionAmount || 0),
+        paymentCount: pendingPayments._count,
+        totalServicesValue: Number(pendingPayments._sum.finalAmount || 0),
+      },
+      paid: {
+        amount: Number(paidPayouts._sum.totalAmount || 0),
+        payoutCount: paidPayouts._count,
+      },
+      awaitingPayout: {
+        amount: Number(pendingPayouts._sum.totalAmount || 0),
+        payoutCount: pendingPayouts._count,
+      },
+      total: {
+        earned: Number(pendingPayments._sum.commissionAmount || 0) +
+                Number(paidPayouts._sum.totalAmount || 0) +
+                Number(pendingPayouts._sum.totalAmount || 0),
+      },
+    };
   }
 }
 

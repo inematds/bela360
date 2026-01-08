@@ -125,6 +125,7 @@ model Business {
   professionalRankings ProfessionalRanking[]
   marketingSuggestions MarketingSuggestion[]
   contentTemplates ContentTemplate[]
+  commissionPayouts CommissionPayout[]
 
   @@index([phone])
   @@index([status])
@@ -171,6 +172,10 @@ model User {
   stockMovements     StockMovement[]
   professionalProfile ProfessionalProfile?
   professionalRankings ProfessionalRanking[]
+
+  // Commission payout relations
+  commissionPayouts  CommissionPayout[] @relation("ProfessionalPayouts")
+  processedPayouts   CommissionPayout[] @relation("ProcessedPayouts")
 
   @@unique([businessId, phone])
   @@index([businessId])
@@ -621,6 +626,7 @@ model Payment {
   commissionRate Decimal       @db.Decimal(5, 2)  // Percentage
   commissionAmount Decimal     @db.Decimal(10, 2) // Calculated amount
   businessAmount Decimal       @db.Decimal(10, 2) // What stays with business
+  commissionPayoutId String?   // Links to payout when commission is paid
 
   // Receipt
   receiptUrl     String?       // Photo of receipt if any
@@ -640,11 +646,13 @@ model Payment {
   client         Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
   professional   User          @relation("ProfessionalPayments", fields: [professionalId], references: [id], onDelete: Cascade)
   registeredBy   User          @relation("RegisteredPayments", fields: [registeredById], references: [id], onDelete: Cascade)
+  commissionPayout CommissionPayout? @relation("PaymentPayout", fields: [commissionPayoutId], references: [id], onDelete: SetNull)
 
   @@index([businessId])
   @@index([businessId, paidAt])
   @@index([professionalId])
   @@index([appointmentId])
+  @@index([commissionPayoutId])
   @@map("payments")
 }
 
@@ -671,6 +679,51 @@ model CommissionConfig {
   @@index([businessId])
   @@index([professionalId])
   @@map("commission_configs")
+}
+
+model CommissionPayout {
+  id             String   @id @default(cuid())
+  businessId     String
+  professionalId String
+
+  // Payout details
+  totalAmount    Decimal  @db.Decimal(10, 2) // Total commission being paid
+  paymentCount   Int      // Number of appointments included
+  periodStart    DateTime // Start of the period covered
+  periodEnd      DateTime // End of the period covered
+
+  // Payment info
+  paymentMethod  String?  // How the payout was made (cash, pix, transfer, etc)
+  reference      String?  // Reference/receipt number
+  notes          String?
+
+  // Status
+  status         CommissionPayoutStatus @default(PENDING)
+  paidAt         DateTime?              // When actually paid
+
+  // Who processed
+  processedById  String?
+
+  // Timestamps
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  business       Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  professional   User     @relation("ProfessionalPayouts", fields: [professionalId], references: [id], onDelete: Cascade)
+  processedBy    User?    @relation("ProcessedPayouts", fields: [processedById], references: [id], onDelete: SetNull)
+  payments       Payment[] @relation("PaymentPayout")
+
+  @@index([businessId])
+  @@index([professionalId])
+  @@index([businessId, professionalId])
+  @@map("commission_payouts")
+}
+
+enum CommissionPayoutStatus {
+  PENDING
+  PAID
+  CANCELLED
 }
 
 model CashRegister {

@@ -13,6 +13,21 @@ router.delete('/commissions/configs/:id', (req, res, next) => financeController.
 
 // Pending commissions
 router.get('/commissions/pending', (req, res, next) => financeController.getPendingCommissions(req, res, next));
+router.get('/commissions/pending/:professionalId', (req, res, next) => financeController.getPendingPaymentsForProfessional(req, res, next));
+
+// Commission payouts
+router.get('/commissions/payouts', (req, res, next) => financeController.getCommissionPayouts(req, res, next));
+router.get('/commissions/payouts/:id', (req, res, next) => financeController.getCommissionPayoutDetails(req, res, next));
+router.post('/commissions/payouts', (req, res, next) => financeController.createCommissionPayout(req, res, next));
+router.post('/commissions/payouts/:id/pay', (req, res, next) => financeController.markPayoutAsPaid(req, res, next));
+router.delete('/commissions/payouts/:id', (req, res, next) => financeController.cancelCommissionPayout(req, res, next));
+
+// Professional commission summary
+router.get('/commissions/summary/:professionalId', (req, res, next) => financeController.getProfessionalCommissionSummary(req, res, next));
+
+// My commissions (for professionals to access their own data)
+router.get('/my/commissions', (req, res, next) => financeController.getMyCommissions(req, res, next));
+router.get('/my/commission-entries', (req, res, next) => financeController.getMyCommissionEntries(req, res, next));
 
 // Professional earnings
 router.get('/earnings/:professionalId', (req, res, next) => financeController.getProfessionalEarnings(req, res, next));

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { financeService } from './finance.service';
-import { PaymentMethod } from '@prisma/client';
+import { PaymentMethod, CommissionPayoutStatus } from '@prisma/client';
 
 export class FinanceController {
   /**
@@ -232,6 +232,216 @@ export class FinanceController {
       res.json({
         success: true,
         data: pending,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get pending payments for a professional
+   */
+  async getPendingPaymentsForProfessional(req: Request, res: Response, next: NextFunction) {
+    try {
+      const businessId = req.user!.businessId;
+      const { professionalId } = req.params;
+      const payments = await financeService.getPendingPaymentsForProfessional(businessId, professionalId);
+
+      res.json({
+        success: true,
+        data: payments,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get commission payouts
+   */
+  async getCommissionPayouts(req: Request, res: Response, next: NextFunction) {
+    try {
+      const businessId = req.user!.businessId;
+      const { professionalId, status, startDate, endDate } = req.query;
+
+      const filters: any = {};
+      if (professionalId) filters.professionalId = professionalId as string;
+      if (status) filters.status = status as CommissionPayoutStatus;
+      if (startDate) filters.startDate = new Date(startDate as string);
+      if (endDate) filters.endDate = new Date(endDate as string);
+
+      const payouts = await financeService.getCommissionPayouts(businessId, filters);
+
+      res.json({
+        success: true,
+        data: payouts,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get commission payout details
+   */
+  async getCommissionPayoutDetails(req: Request, res: Response, next: NextFunction) {
+    try {
+      const businessId = req.user!.businessId;
+      const { id } = req.params;
+      const payout = await financeService.getCommissionPayoutDetails(businessId, id);
+
+      res.json({
+        success: true,
+        data: payout,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Create commission payout
+   */
+  async createCommissionPayout(req: Request, res: Response, next: NextFunction) {
+    try {
+      const businessId = req.user!.businessId;
+      const userId = req.user!.userId;
+      const payout = await financeService.createCommissionPayout(businessId, userId, req.body);
+
+      res.status(201).json({
+        success: true,
+        data: payout,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Mark payout as paid
+   */
+  async markPayoutAsPaid(req: Request, res: Response, next: NextFunction) {
+    try {
+      const businessId = req.user!.businessId;
+      const userId = req.user!.userId;
+      const { id } = req.params;
+      const payout = await financeService.markPayoutAsPaid(businessId, userId, id, req.body);
+
+      res.json({
+        success: true,
+        data: payout,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Cancel commission payout
+   */
+  async cancelCommissionPayout(req: Request, res: Response, next: NextFunction) {
+    try {
+      const businessId = req.user!.businessId;
+      const { id } = req.params;
+      await financeService.cancelCommissionPayout(businessId, id);
+
+      res.json({
+        success: true,
+        message: 'Repasse cancelado',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get professional commission summary
+   */
+  async getProfessionalCommissionSummary(req: Request, res: Response, next: NextFunction) {
+    try {
+      const businessId = req.user!.businessId;
+      const { professionalId } = req.params;
+      const { startDate, endDate } = req.query;
+
+      const start = startDate ? new Date(startDate as string) : undefined;
+      const end = endDate ? new Date(endDate as string) : undefined;
+
+      const summary = await financeService.getProfessionalCommissionSummary(
+        businessId,
+        professionalId,
+        start,
+        end
+      );
+
+      res.json({
+        success: true,
+        data: summary,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get my commissions (for professionals to access their own data)
+   */
+  async getMyCommissions(req: Request, res: Response, next: NextFunction) {
+    try {
+      const businessId = req.user!.businessId;
+      const userId = req.user!.userId;
+      const { startDate, endDate } = req.query;
+
+      const start = startDate ? new Date(startDate as string) : undefined;
+      const end = endDate ? new Date(endDate as string) : undefined;
+
+      const summary = await financeService.getProfessionalCommissionSummary(
+        businessId,
+        userId,
+        start,
+        end
+      );
+
+      res.json({
+        success: true,
+        data: summary,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get my commission entries (for professionals to see their payment history)
+   */
+  async getMyCommissionEntries(req: Request, res: Response, next: NextFunction) {
+    try {
+      const businessId = req.user!.businessId;
+      const userId = req.user!.userId;
+      const { startDate, endDate } = req.query;
+
+      // Get all payment entries for this professional
+      const entries = await financeService.getPayments(businessId, {
+        professionalId: userId,
+        startDate: startDate ? new Date(startDate as string) : undefined,
+        endDate: endDate ? new Date(endDate as string) : undefined,
+      });
+
+      // Separate by payout status
+      const pending = entries.filter(e => !e.commissionPayoutId);
+      const paid = entries.filter(e => e.commissionPayoutId);
+
+      res.json({
+        success: true,
+        data: {
+          entries,
+          pending,
+          paid,
+          totals: {
+            pendingAmount: pending.reduce((sum, p) => sum + Number(p.commissionAmount), 0),
+            paidAmount: paid.reduce((sum, p) => sum + Number(p.commissionAmount), 0),
+            totalAmount: entries.reduce((sum, p) => sum + Number(p.commissionAmount), 0),
+          },
+        },
       });
     } catch (error) {
       next(error);

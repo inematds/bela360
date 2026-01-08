@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { ExportButton } from '@/components/ExportButton';
+import { exportData, ExportFormat, prepareClientExport } from '@/lib/export';
 
 interface Client {
   id: string;
@@ -36,6 +38,7 @@ export default function ClientesPage() {
     notes: '',
   });
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const filteredClients = clients.filter(
     client =>
@@ -43,6 +46,29 @@ export default function ClientesPage() {
       client.phone.includes(search) ||
       client.email.toLowerCase().includes(search.toLowerCase())
   );
+
+  const handleExport = (format: ExportFormat) => {
+    setExporting(true);
+    try {
+      const clientsForExport = filteredClients.map(c => ({
+        name: c.name,
+        phone: formatPhone(c.phone),
+        email: c.email || undefined,
+        lastVisitAt: c.lastVisit,
+        totalAppointments: c.totalVisits,
+        totalSpent: c.totalSpent,
+      }));
+
+      const data = prepareClientExport(clientsForExport);
+      exportData(data, format, {
+        filename: `clientes-${new Date().toISOString().split('T')[0]}`,
+        title: 'Lista de Clientes',
+        subtitle: `${filteredClients.length} clientes`,
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const handleOpenProfile = (client: Client) => {
     setSelectedClient(client);
@@ -109,12 +135,15 @@ export default function ClientesPage() {
           <h1 className="text-2xl font-bold text-gray-800">Clientes</h1>
           <p className="text-gray-600">{clients.length} clientes cadastrados</p>
         </div>
-        <button
-          onClick={() => setShowNewModal(true)}
-          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-        >
-          + Novo Cliente
-        </button>
+        <div className="flex gap-2">
+          <ExportButton onExport={handleExport} loading={exporting} />
+          <button
+            onClick={() => setShowNewModal(true)}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            + Novo Cliente
+          </button>
+        </div>
       </div>
 
       {/* Search */}
